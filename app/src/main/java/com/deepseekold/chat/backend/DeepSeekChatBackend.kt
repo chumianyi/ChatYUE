@@ -39,6 +39,10 @@ class DeepSeekChatBackend(
         val firstEventReceived = AtomicBoolean(false)
         val thinking = StringBuilder()
         val content = StringBuilder()
+        // 原始响应文本（截断保存），用于服务端未按 SSE 规范返回时的兜底解析与报错诊断。
+        val rawBody = StringBuilder()
+        var eventCount = 0
+        var streamErrorMessage: String? = null
         var finishReason: BackendFinishReason? = null
 
         val httpRequest = Request.Builder()
@@ -86,6 +90,8 @@ class DeepSeekChatBackend(
                         }
 
                         val source = it.body?.source()
+                        val contentType = it.body?.contentType()?.toString().orEmpty()
+                        val httpStatus = it.code
                         if (source == null) {
                             firstEventTimeout?.cancel(false)
                             dispatchFailure(
@@ -101,12 +107,14 @@ class DeepSeekChatBackend(
                         }
 
                         try {
-                            readSseEvents(source) { data ->
+                            readSseEvents(source, rawBody) { data ->
                                 if (canceled.get() || terminal.get()) return@readSseEvents
+                                eventCount++
                                 if (firstEventReceived.compareAndSet(false, true)) {
                                     firstEventTimeout?.cancel(false)
                                 }
-                                if (data == DONE_EVENT) {
+                                val payload = data.trim()
+                                if (payload == DONE_EVENT) {
                                     complete(
                                         terminal = terminal,
                                         callback = callback,
@@ -117,14 +125,23 @@ class DeepSeekChatBackend(
                                     return@readSseEvents
                                 }
 
-                                val event = JSONObject(data)
+                                val event = runCatching { JSONObject(payload) }.getOrNull()
+                                    ?: return@readSseEvents
+                                // 有些网关会在流中直接下发 error 对象。
+                                event.optJSONObject("error")?.let { error ->
+                                    streamErrorMessage = error.optString("message")
+                                        .ifBlank { error.toString() }
+                                    return@readSseEvents
+                                }
                                 val choice = event.optJSONArray("choices")
                                     ?.optJSONObject(0)
                                     ?: return@readSseEvents
                                 val delta = choice.optJSONObject("delta")
                                     ?: JSONObject()
                                 val thinkingDelta = delta.optStringOrNull("reasoning_content")
+                                    ?: choice.optStringOrNull("reasoning_content")
                                 val textDelta = delta.optStringOrNull("content")
+                                    ?: choice.optStringOrNull("content")
 
                                 if (!thinkingDelta.isNullOrEmpty()) {
                                     thinking.append(thinkingDelta)
@@ -142,45 +159,75 @@ class DeepSeekChatBackend(
                                 val reason = choice.optStringOrNull("finish_reason")
                                 if (!reason.isNullOrEmpty()) {
                                     finishReason = when (reason) {
-                                        "stop" -> BackendFinishReason.STOP
-                                        "length" -> BackendFinishReason.LENGTH
+                                        "stop", "eos", "end_turn" -> BackendFinishReason.STOP
+                                        "length", "max_tokens" -> BackendFinishReason.LENGTH
                                         "content_filter" -> BackendFinishReason.CONTENT_FILTER
-                                        else -> {
-                                            dispatchFailure(
-                                                terminal,
-                                                callback,
-                                                BackendError(
-                                                    message = "服务端返回了不支持的结束原因：$reason",
-                                                    code = reason,
-                                                    type = BackendErrorType.PROTOCOL,
-                                                ),
-                                            )
-                                            return@readSseEvents
-                                        }
+                                        // 未知的结束原因不再视为错误，按正常结束处理。
+                                        else -> BackendFinishReason.STOP
                                     }
                                 }
                             }
 
                             if (!terminal.get() && !canceled.get()) {
                                 firstEventTimeout?.cancel(false)
-                                if (finishReason != null) {
-                                    complete(
-                                        terminal = terminal,
-                                        callback = callback,
-                                        content = content.toString(),
-                                        thinking = thinking.toString(),
-                                        finishReason = finishReason ?: BackendFinishReason.STOP,
-                                    )
-                                } else {
-                                    dispatchFailure(
-                                        terminal,
-                                        callback,
-                                        BackendError(
-                                            message = "流式响应提前结束，未收到完成标记。",
-                                            type = BackendErrorType.PROTOCOL,
-                                            retryable = true,
-                                        ),
-                                    )
+                                when {
+                                    // 情况一：完全没有解析到 SSE 事件，尝试按非流式 JSON 解析。
+                                    eventCount == 0 -> {
+                                        if (!consumePlainBody(rawBody.toString(), terminal, callback)) {
+                                            dispatchFailure(
+                                                terminal,
+                                                callback,
+                                                BackendError(
+                                                    message = "服务端没有返回任何内容。" +
+                                                        httpDetail(httpStatus, contentType) +
+                                                        rawBodySnippet(rawBody.toString()),
+                                                    type = BackendErrorType.PROTOCOL,
+                                                    retryable = true,
+                                                ),
+                                            )
+                                        }
+                                    }
+
+                                    // 情况二：流中直接下发过 error。
+                                    streamErrorMessage != null &&
+                                        content.isEmpty() && thinking.isEmpty() -> {
+                                        dispatchFailure(
+                                            terminal,
+                                            callback,
+                                            BackendError(
+                                                message = streamErrorMessage.orEmpty(),
+                                                type = BackendErrorType.SERVER,
+                                                retryable = true,
+                                            ),
+                                        )
+                                    }
+
+                                    // 情况三：收到内容，但服务端没有下发结束标记。
+                                    // 很多网关（尤其是自建代理）收流时不会发送 finish_reason 或 [DONE]，
+                                    // 此时已拿到的内容就是完整回答，按正常结束处理。
+                                    content.isNotEmpty() || thinking.isNotEmpty() -> {
+                                        complete(
+                                            terminal = terminal,
+                                            callback = callback,
+                                            content = content.toString(),
+                                            thinking = thinking.toString(),
+                                            finishReason = finishReason ?: BackendFinishReason.STOP,
+                                        )
+                                    }
+
+                                    else -> {
+                                        dispatchFailure(
+                                            terminal,
+                                            callback,
+                                            BackendError(
+                                                message = "服务端没有返回可显示的内容。" +
+                                                    httpDetail(httpStatus, contentType) +
+                                                    rawBodySnippet(rawBody.toString()),
+                                                type = BackendErrorType.PROTOCOL,
+                                                retryable = true,
+                                            ),
+                                        )
+                                    }
                                 }
                             }
                         } catch (e: Exception) {
@@ -292,11 +339,15 @@ class DeepSeekChatBackend(
 
     private fun readSseEvents(
         source: okio.BufferedSource,
+        rawSink: StringBuilder,
         onEvent: (String) -> Unit,
     ) {
         val dataLines = mutableListOf<String>()
         while (!source.exhausted()) {
             val line = source.readUtf8Line() ?: break
+            if (rawSink.length < RAW_BODY_LIMIT) {
+                rawSink.append(line).append('\n')
+            }
             if (line.isEmpty()) {
                 if (dataLines.isNotEmpty()) {
                     onEvent(dataLines.joinToString("\n"))
@@ -317,6 +368,66 @@ class DeepSeekChatBackend(
             dataLines += line.substring(valueStart)
         }
         if (dataLines.isNotEmpty()) onEvent(dataLines.joinToString("\n"))
+    }
+
+    /**
+     * 兜底：服务端忽略 `stream: true`，直接返回了一个普通的 Chat Completions JSON。
+     * 解析成功返回 true。
+     */
+    private fun consumePlainBody(
+        text: String,
+        terminal: AtomicBoolean,
+        callback: ChatBackend.Callback,
+    ): Boolean {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return false
+        val start = trimmed.indexOf('{')
+        val end = trimmed.lastIndexOf('}')
+        if (start < 0 || end <= start) return false
+        val json = runCatching { JSONObject(trimmed.substring(start, end + 1)) }.getOrNull()
+            ?: return false
+
+        json.optJSONObject("error")?.let { error ->
+            dispatchFailure(
+                terminal,
+                callback,
+                BackendError(
+                    message = error.optStringOrNull("message") ?: error.toString(),
+                    code = error.optStringOrNull("code"),
+                    type = BackendErrorType.SERVER,
+                ),
+            )
+            return true
+        }
+
+        val choice = json.optJSONArray("choices")?.optJSONObject(0) ?: return false
+        val message = choice.optJSONObject("message")
+        val plainContent = message?.optStringOrNull("content")
+            ?: choice.optStringOrNull("text")
+            ?: choice.optStringOrNull("content")
+        val plainThinking = message?.optStringOrNull("reasoning_content")
+        if (plainContent.isNullOrEmpty() && plainThinking.isNullOrEmpty()) return false
+
+        complete(
+            terminal = terminal,
+            callback = callback,
+            content = plainContent.orEmpty(),
+            thinking = plainThinking.orEmpty(),
+            finishReason = BackendFinishReason.STOP,
+        )
+        return true
+    }
+
+    /** 出错时附带一小段服务端原文，便于定位问题，同时避免刷屏。 */
+    private fun rawBodySnippet(raw: String): String {
+        val snippet = raw.trim().replace(Regex("\\s+"), " ")
+        if (snippet.isEmpty()) return ""
+        return "\n服务端返回：${snippet.take(SNIPPET_LENGTH)}"
+    }
+
+    private fun httpDetail(status: Int, contentType: String): String {
+        val type = contentType.ifEmpty { "无" }
+        return "\nHTTP 状态：$status，Content-Type：$type"
     }
 
     private fun parseHttpError(statusCode: Int, body: String): BackendError {
@@ -355,7 +466,9 @@ class DeepSeekChatBackend(
 
     companion object {
         private const val DONE_EVENT = "[DONE]"
-        private const val FIRST_EVENT_TIMEOUT_MILLIS = 30_000L
+        private const val FIRST_EVENT_TIMEOUT_MILLIS = 60_000L
+        private const val RAW_BODY_LIMIT = 64 * 1024
+        private const val SNIPPET_LENGTH = 200
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
         private val MainThreadExecutor = Executor { runnable ->
             android.os.Handler(android.os.Looper.getMainLooper()).post(runnable)

@@ -118,6 +118,115 @@ class DeepSeekChatBackendTest {
     }
 
     @Test
+    fun streamWithoutFinishMarkerStillCompletes() {
+        // 自建代理常见的收流方式：只有 delta，没有 finish_reason，也没有 [DONE]。
+        server.enqueue(
+            MockResponse()
+                .setHeader("Content-Type", "text/event-stream")
+                .setBody(
+                    """
+                    data: {"choices":[{"delta":{"reasoning_content":"想"}}]}
+
+                    data: {"choices":[{"delta":{"content":"完整"}}]}
+
+                    data: {"choices":[{"delta":{"content":"回答"}}]}
+
+                    """.trimIndent(),
+                ),
+        )
+
+        val callback = RecordingCallback()
+        createBackend().sendMessage(
+            ChatRequest(
+                conversationId = "1",
+                messages = listOf(BackendMessage(BackendRole.USER, "问题")),
+            ),
+            callback,
+        )
+
+        assertTrue(callback.completed.await(5, TimeUnit.SECONDS))
+        assertEquals("完整回答", callback.result?.content)
+        assertEquals("想", callback.result?.thinking)
+        assertEquals(BackendFinishReason.STOP, callback.result?.finishReason)
+        assertTrue(callback.error == null)
+    }
+
+    @Test
+    fun plainJsonResponseIsAcceptedAsFallback() {
+        // 服务端忽略了 stream: true，直接返回普通 JSON。
+        server.enqueue(
+            MockResponse()
+                .setHeader("Content-Type", "application/json")
+                .setBody(
+                    """{"choices":[{"message":{"role":"assistant",""" +
+                        """"reasoning_content":"思考","content":"非流式回答"}}]}""",
+                ),
+        )
+
+        val callback = RecordingCallback()
+        createBackend().sendMessage(
+            ChatRequest(
+                conversationId = "1",
+                messages = listOf(BackendMessage(BackendRole.USER, "问题")),
+            ),
+            callback,
+        )
+
+        assertTrue(callback.completed.await(5, TimeUnit.SECONDS))
+        assertEquals("非流式回答", callback.result?.content)
+        assertEquals("思考", callback.result?.thinking)
+    }
+
+    @Test
+    fun streamedErrorMessageIsSurfaced() {
+        server.enqueue(
+            MockResponse()
+                .setHeader("Content-Type", "text/event-stream")
+                .setBody(
+                    "data: {\"error\":{\"message\":\"upstream timeout\"}}\n\n",
+                ),
+        )
+
+        val callback = RecordingCallback()
+        createBackend().sendMessage(
+            ChatRequest(
+                conversationId = "1",
+                messages = listOf(BackendMessage(BackendRole.USER, "问题")),
+            ),
+            callback,
+        )
+
+        assertTrue(callback.failed.await(5, TimeUnit.SECONDS))
+        assertEquals("upstream timeout", callback.error?.message)
+    }
+
+    @Test
+    fun unknownFinishReasonIsTreatedAsStop() {
+        server.enqueue(
+            MockResponse()
+                .setHeader("Content-Type", "text/event-stream")
+                .setBody(
+                    "data: {\"choices\":[{\"delta\":{\"content\":\"ok\"}," +
+                        "\"finish_reason\":\"some_new_reason\"}]}\n\n" +
+                        "data: [DONE]\n\n",
+                ),
+        )
+
+        val callback = RecordingCallback()
+        createBackend().sendMessage(
+            ChatRequest(
+                conversationId = "1",
+                messages = listOf(BackendMessage(BackendRole.USER, "问题")),
+            ),
+            callback,
+        )
+
+        assertTrue(callback.completed.await(5, TimeUnit.SECONDS))
+        assertEquals("ok", callback.result?.content)
+        assertEquals(BackendFinishReason.STOP, callback.result?.finishReason)
+    }
+
+    @Test
     fun authenticationFailureIsMapped() {
         server.enqueue(
             MockResponse()
