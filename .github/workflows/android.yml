@@ -3,20 +3,11 @@ name: Android Build
 on:
   push:
     branches: [ main, master ]
-    paths:
-      - "android/**"
-      - ".github/workflows/android.yml"
   pull_request:
-    paths:
-      - "android/**"
   workflow_dispatch:
 
 permissions:
   contents: read
-
-defaults:
-  run:
-    working-directory: android
 
 jobs:
   build:
@@ -56,7 +47,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: DeepSeekOld-debug-apk
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
       - name: Upload unit test report
@@ -64,5 +55,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: DeepSeekOld-unit-test-report
-          path: android/app/build/reports/tests/test
+          path: app/build/reports/tests/test
           if-no-files-found: ignore
