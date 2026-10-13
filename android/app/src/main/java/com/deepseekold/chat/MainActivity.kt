@@ -165,6 +165,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun configureComposer() {
+        // 思考模式固定开启，不可切换，这里只做视觉标识。
+        binding.thinkingModeLabel.isSelected = true
         binding.messageInput.doAfterTextChanged {
             updateSendButton()
         }

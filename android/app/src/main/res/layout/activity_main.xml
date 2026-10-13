@@ -213,7 +213,6 @@
                         android:gravity="center"
                         android:paddingStart="12dp"
                         android:paddingEnd="12dp"
-                        android:selected="true"
                         android:text="@string/thinking_mode_label"
                         android:textColor="@color/deep_think_text"
                         android:textSize="12sp" />
