@@ -70,6 +70,8 @@ class ConversationAdapter(
                 when (section) {
                     ConversationSection.TODAY -> R.string.section_today
                     ConversationSection.YESTERDAY -> R.string.section_yesterday
+                    ConversationSection.LAST_7_DAYS -> R.string.section_last_7_days
+                    ConversationSection.LAST_30_DAYS -> R.string.section_last_30_days
                     ConversationSection.EARLIER -> R.string.section_earlier
                 },
             )

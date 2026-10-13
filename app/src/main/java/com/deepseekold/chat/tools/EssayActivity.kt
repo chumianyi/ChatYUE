@@ -1,6 +1,7 @@
 package com.deepseekold.chat.tools
 
 import android.os.Bundle
+import android.widget.ArrayAdapter
 import android.widget.SeekBar
 import com.deepseekold.chat.ContextBudget
 import com.deepseekold.chat.R
@@ -20,6 +21,24 @@ class EssayActivity : BaseToolActivity() {
         binding = ActivityToolEssayBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setupBackButton(binding.backButton)
+
+        val styleAdapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_item,
+            ToolPrompts.ESSAY_STYLES.map { it.name },
+        )
+        styleAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.styleSpinner.adapter = styleAdapter
+
+        val languageAdapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_item,
+            ToolPrompts.ESSAY_LANGUAGES.map { it.name },
+        )
+        languageAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.languageSpinner.adapter = languageAdapter
+        // 默认中文（ESSAY_LANGUAGES 第 0 项）
+        binding.languageSpinner.setSelection(DEFAULT_LANGUAGE_INDEX)
 
         binding.wordCountSlider.max = SLIDER_STEPS
         binding.wordCountSlider.progress = DEFAULT_STEP
@@ -69,24 +88,20 @@ class EssayActivity : BaseToolActivity() {
         }
 
         val target = targetWords()
-        val thinking = StringBuilder()
+        val style = currentStyle()
+        val language = currentLanguage()
         val answer = StringBuilder()
-        binding.resultText.text = ""
+        binding.resultText.setText(R.string.generating)
         binding.resultCountLabel.text = ""
         setStreaming(true)
 
         request = ToolApi.chat(
-            messages = ToolPrompts.essayMessages(topic, target),
+            messages = ToolPrompts.essayMessages(topic, target, style, language),
             onTextDelta = { delta ->
                 answer.append(delta)
                 binding.resultText.text = answer.toString()
             },
-            onThinkingDelta = { delta ->
-                thinking.append(delta)
-                if (answer.isEmpty()) {
-                    binding.resultText.text = thinking.toString()
-                }
-            },
+            onThinkingDelta = {},
             onCompleted = { content ->
                 request = null
                 setStreaming(false)
@@ -120,6 +135,20 @@ class EssayActivity : BaseToolActivity() {
             if (isStreaming) R.string.generating else R.string.essay_generate,
         )
         binding.wordCountSlider.isEnabled = !isStreaming
+        binding.styleSpinner.isEnabled = !isStreaming
+        binding.languageSpinner.isEnabled = !isStreaming
+    }
+
+    private fun currentStyle(): ToolPrompts.EssayStyle {
+        val index = binding.styleSpinner.selectedItemPosition
+            .coerceIn(0, ToolPrompts.ESSAY_STYLES.lastIndex)
+        return ToolPrompts.ESSAY_STYLES[index]
+    }
+
+    private fun currentLanguage(): ToolPrompts.EssayLanguage {
+        val index = binding.languageSpinner.selectedItemPosition
+            .coerceIn(0, ToolPrompts.ESSAY_LANGUAGES.lastIndex)
+        return ToolPrompts.ESSAY_LANGUAGES[index]
     }
 
     /** 统计正文实际字数（不含空白字符）。 */
@@ -137,5 +166,6 @@ class EssayActivity : BaseToolActivity() {
         private const val SLIDER_STEPS =
             (ToolPrompts.ESSAY_MAX_WORDS - ToolPrompts.ESSAY_MIN_WORDS) / SLIDER_STEP
         private const val DEFAULT_STEP = 14
+        private const val DEFAULT_LANGUAGE_INDEX = 0
     }
 }

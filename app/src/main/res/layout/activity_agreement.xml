@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/ds_surface"
+    android:orientation="vertical"
+    tools:context=".AgreementActivity">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp">
+
+        <TextView
+            style="@style/Widget.DeepSeekOld.ToolHeaderTitle"
+            android:text="@string/agreement_title" />
+    </FrameLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/ds_divider" />
+
+    <WebView
+        android:id="@+id/agreementWebView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <TextView
+        android:id="@+id/offlineNotice"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="16dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="16dp"
+        android:text="@string/agreement_offline"
+        android:textColor="@color/ds_text_secondary"
+        android:textSize="13sp"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="16dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="16dp"
+        android:text="@string/agreement_notice"
+        android:textColor="@color/ds_text_secondary"
+        android:textSize="13sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="16dp">
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/declineButton"
+            style="@style/Widget.DeepSeekOld.SecondaryButton"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_weight="1"
+            android:text="@string/agreement_decline" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/acceptButton"
+            style="@style/Widget.DeepSeekOld.PrimaryButton"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:text="@string/agreement_accept" />
+    </LinearLayout>
+</LinearLayout>

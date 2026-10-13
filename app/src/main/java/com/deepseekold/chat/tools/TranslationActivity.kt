@@ -80,9 +80,9 @@ class TranslationActivity : BaseToolActivity() {
         }
 
         val direction = currentPair().direction(leftToRight)
-        val thinking = StringBuilder()
         val answer = StringBuilder()
-        binding.resultText.text = ""
+        // 思考内容一律不展示，界面上只出现译文本身。
+        binding.resultText.setText(R.string.generating)
         setStreaming(true)
 
         request = ToolApi.chat(
@@ -91,13 +91,7 @@ class TranslationActivity : BaseToolActivity() {
                 answer.append(delta)
                 binding.resultText.text = answer.toString()
             },
-            onThinkingDelta = { delta ->
-                thinking.append(delta)
-                // 正式译文还没开始时，先展示思考过程作为进度反馈。
-                if (answer.isEmpty()) {
-                    binding.resultText.text = thinking.toString()
-                }
-            },
+            onThinkingDelta = {},
             onCompleted = { content ->
                 request = null
                 setStreaming(false)

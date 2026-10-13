@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeepSeekOld 隐私政策</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <h1>DeepSeekOld 隐私政策</h1>
+  <p class="meta">版本 1.1 ｜ 生效日期：2026-10-14</p>
+
+  <p>本政策说明 DeepSeekOld（以下简称“本应用”）如何处理你的信息。<strong>本应用不设账号、不收集身份信息、不含广告与第三方统计 SDK。</strong></p>
+
+  <h2>一、我们处理哪些信息</h2>
+  <table>
+    <thead><tr><th>信息</th><th>用途</th><th>存储位置</th></tr></thead>
+    <tbody>
+      <tr><td>你输入的聊天内容</td><td>发送给固定接口以获取回答</td><td>本机数据库；发送时经网络传输</td></tr>
+      <tr><td>历史对话与标题</td><td>在本机展示与搜索</td><td>仅本机，卸载即删除</td></tr>
+      <tr><td>你选择的图片</td><td>作为附件展示</td><td>读取设备图片，仅在本机展示；图片内容不会上传</td></tr>
+      <tr><td>你选择的 txt 文本</td><td>读取内容并作为提问的一部分</td><td>读取后随消息发送给接口</td></tr>
+      <tr><td>联网搜索关键词</td><td>在你开启联网搜索时检索公开资料</td><td>发送给公开搜索服务（DuckDuckGo、维基百科）</td></tr>
+      <tr><td>协议同意状态</td><td>避免重复提示</td><td>仅本机的应用私有存储</td></tr>
+    </tbody>
+  </table>
+
+  <h2>二、权限说明</h2>
+  <ul>
+    <li><strong>网络权限</strong>：用于访问固定接口、联网搜索与检查更新。</li>
+    <li><strong>读取图片（相册）权限</strong>：仅当你主动点击「选择图片」时申请，用于列出设备中的图片供你选择。拒绝后仍可正常聊天，只是无法选择图片。</li>
+    <li>本应用<strong>不会读取或上传</strong>你的通讯录、短信、位置、通话记录等信息。</li>
+  </ul>
+
+  <h2>三、数据如何流动</h2>
+  <ol>
+    <li>你的消息会通过明文 HTTP 发送到本应用内置的固定接口，再由该接口转发给上游模型服务。请注意：<strong>该链路不是端到端加密</strong>，请勿发送密码、身份证号等敏感信息。</li>
+    <li>开启联网搜索时，你的关键词会发送给 DuckDuckGo 与维基百科的公开接口，用于检索公开资料。</li>
+    <li>「检查更新」与「更新日志」会请求本项目的 GitHub Pages 静态文件。</li>
+    <li>除上述场景外，本应用不会向任何第三方提供你的信息。</li>
+  </ol>
+
+  <h2>四、数据保留与删除</h2>
+  <ul>
+    <li>聊天记录保存在本机数据库中，可在应用内「清空历史记录」删除，或通过系统卸载应用一并删除。</li>
+    <li>本应用没有服务器端存储，开发者无法访问你的聊天记录。</li>
+  </ul>
+
+  <h2>五、未成年人保护</h2>
+  <p>本应用不面向 14 周岁以下未成年人。未成年人应在监护人指导下使用，并在监护人同意本政策后使用。</p>
+
+  <h2>六、政策更新</h2>
+  <p>本政策以本网页版本为准，可能随时更新，更新后在本页面发布即生效。</p>
+
+  <h2>七、联系方式</h2>
+  <p>如有疑问，可通过 <a href="https://github.com/chumianyi/DeepSeekOld/issues">项目 Issues</a> 与我们联系。</p>
+
+  <p class="footer"><a href="index.html">返回首页</a> ｜ <a href="agreement.html">用户协议</a></p>
+</main>
+</body>
+</html>

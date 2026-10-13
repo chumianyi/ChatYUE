@@ -18,32 +18,44 @@ class ConversationFormatterTest {
     }
 
     @Test
-    fun sectionFor_groupsTodayYesterdayAndEarlier() {
+    fun sectionFor_groupsConversationsByTime() {
         val now = timestamp(2026, Calendar.JULY, 21, 14)
 
         assertEquals(
             ConversationSection.TODAY,
-            ConversationFormatter.sectionFor(
-                timestamp(2026, Calendar.JULY, 21, 1),
-                now,
-                utc,
-            ),
+            ConversationFormatter.sectionFor(timestamp(2026, Calendar.JULY, 21, 1), now, utc),
         )
         assertEquals(
             ConversationSection.YESTERDAY,
-            ConversationFormatter.sectionFor(
-                timestamp(2026, Calendar.JULY, 20, 23),
-                now,
-                utc,
-            ),
+            ConversationFormatter.sectionFor(timestamp(2026, Calendar.JULY, 20, 23), now, utc),
+        )
+        assertEquals(
+            ConversationSection.LAST_7_DAYS,
+            ConversationFormatter.sectionFor(timestamp(2026, Calendar.JULY, 18, 9), now, utc),
+        )
+        assertEquals(
+            ConversationSection.LAST_30_DAYS,
+            ConversationFormatter.sectionFor(timestamp(2026, Calendar.JULY, 5, 9), now, utc),
         )
         assertEquals(
             ConversationSection.EARLIER,
-            ConversationFormatter.sectionFor(
-                timestamp(2026, Calendar.JULY, 19, 23),
-                now,
-                utc,
-            ),
+            ConversationFormatter.sectionFor(timestamp(2026, Calendar.JUNE, 1, 9), now, utc),
+        )
+    }
+
+    @Test
+    fun sectionFor_boundariesFallIntoTheNewerBucket() {
+        val now = timestamp(2026, Calendar.JULY, 21, 14)
+
+        // 7 天前的 00:00 属于「7 天内」
+        assertEquals(
+            ConversationSection.LAST_7_DAYS,
+            ConversationFormatter.sectionFor(timestamp(2026, Calendar.JULY, 14, 0), now, utc),
+        )
+        // 30 天前的 00:00 属于「30 天内」
+        assertEquals(
+            ConversationSection.LAST_30_DAYS,
+            ConversationFormatter.sectionFor(timestamp(2026, Calendar.JUNE, 21, 0), now, utc),
         )
     }
 

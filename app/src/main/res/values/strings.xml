@@ -5,8 +5,8 @@
     <string name="new_chat">新对话</string>
     <string name="open_history">打开历史记录</string>
     <string name="create_new_chat">新建对话</string>
-    <string name="welcome_title">你好，我是 DeepSeek R1</string>
-    <string name="welcome_subtitle">思考过程与正式回答会同时展示</string>
+    <string name="welcome_title">嗨，今天要干什么呢？</string>
+    <string name="welcome_subtitle">输入消息即可开始，思考过程与正式回答会同时展示</string>
     <string name="message_hint">输入消息</string>
     <string name="send_message">发送消息</string>
     <string name="stop_generation">停止生成</string>
@@ -33,8 +33,6 @@
     <string name="tools_title">功能</string>
     <string name="tool_translate">智能翻译</string>
     <string name="tool_essay">一起作文</string>
-    <string name="tool_soup">海龟汤</string>
-    <string name="tool_idiom">成语接龙</string>
 
     <!-- 关于 -->
     <string name="about_menu">关于</string>
@@ -66,6 +64,8 @@
     <string name="clear">清空</string>
     <string name="section_today">今天</string>
     <string name="section_yesterday">昨天</string>
+    <string name="section_last_7_days">7 天内</string>
+    <string name="section_last_30_days">30 天内</string>
     <string name="section_earlier">更早</string>
     <string name="attachment_unavailable">暂不支持添加附件</string>
     <string name="thinking_in_progress">思考中...</string>
@@ -97,39 +97,66 @@
     <string name="essay_generate">生成作文</string>
     <string name="essay_empty_topic">请先输入作文题目或要求</string>
 
-    <!-- 海龟汤 -->
-    <string name="soup_title">海龟汤</string>
-    <string name="soup_puzzle_label">谜面</string>
-    <string name="soup_puzzle_placeholder">点击下方按钮由 AI 出题</string>
-    <string name="soup_start">开始出题</string>
-    <string name="soup_restart">重新出题</string>
-    <string name="soup_hint_counter">剩余提示机会：%1$d / %2$d</string>
-    <string name="soup_hint_button">索要提示（剩 %1$d 次）</string>
-    <string name="soup_hint_button_plain">索要提示</string>
-    <string name="soup_ask">提问</string>
-    <string name="soup_guess">猜谜底</string>
-    <string name="soup_input_hint">输入你的问题或答案</string>
-    <string name="soup_hints_exhausted">3 次提示机会已用完</string>
-    <string name="soup_need_puzzle">请先点击「开始出题」</string>
-    <string name="soup_puzzle_failed">题目解析失败，请重新出题</string>
-    <string name="soup_victory_title">猜中啦！</string>
-    <string name="soup_victory_message">谜底：%1$s</string>
-    <string name="soup_answer_reveal">谜底：%1$s</string>
-    <string name="soup_turn_hint">你可以提问，AI 只会回答「是」「否」或「提示」</string>
+    <!-- 联网搜索 -->
+    <string name="web_search">联网搜索</string>
+    <string name="web_search_enabled">联网搜索已开启</string>
+    <string name="web_search_disabled">联网搜索已关闭</string>
+    <string name="web_search_running">正在联网搜索…</string>
+    <string name="web_search_failed">联网搜索失败，已直接提问</string>
+    <string name="web_search_no_result">联网搜索没有找到相关内容，已直接提问</string>
 
-    <!-- 成语接龙 -->
-    <string name="idiom_title">成语接龙</string>
-    <string name="idiom_current_label">当前成语</string>
-    <string name="idiom_none">尚未开始</string>
-    <string name="idiom_start">开始游戏</string>
-    <string name="idiom_restart">重新开始</string>
-    <string name="idiom_input_hint">输入一个四字成语</string>
-    <string name="idiom_submit">接龙</string>
-    <string name="idiom_need_start">请先点击「开始游戏」</string>
-    <string name="idiom_starting">正在出题…</string>
-    <string name="idiom_your_turn">轮到你接：首字读音与「%1$s」末字相同即可</string>
-    <string name="idiom_ai_next">AI 接：%1$s</string>
-    <string name="idiom_ai_give_up">AI 接不上了，你赢了！</string>
-    <string name="idiom_game_over">游戏结束</string>
-    <string name="idiom_empty_input">请先输入一个四字成语</string>
+    <!-- 附件 -->
+    <string name="attach_title">添加附件</string>
+    <string name="attach_image">选择图片</string>
+    <string name="attach_text">选择文本文件（txt）</string>
+    <string name="attach_cancel">取消</string>
+    <string name="attach_remove">移除附件</string>
+    <string name="pick_image_title">选择图片</string>
+    <string name="pick_image_empty">相册中没有找到任何图片</string>
+    <string name="media_permission_denied">未获得相册权限，无法查看设备中的图片</string>
+    <string name="image_text_only_notice">本模型仅支持识别文本，图片将作为附件发送</string>
+    <string name="attachment_reading">正在读取文件…</string>
+    <string name="attachment_read_failed">文件读取失败</string>
+    <string name="attachment_too_large">文件过大，仅支持 200KB 以内的 txt</string>
+    <string name="attachment_image_label">图片附件</string>
+    <string name="attachment_text_label">文本附件</string>
+
+    <!-- 检查更新 / 更新日志 -->
+    <string name="menu_check_update">检查更新</string>
+    <string name="menu_changelog">更新日志</string>
+    <string name="changelog_title">更新日志</string>
+    <string name="changelog_empty">暂无更新日志</string>
+    <string name="changelog_loading">正在加载…</string>
+    <string name="changelog_failed">加载失败：%1$s</string>
+    <string name="update_found_title">发现新版本 %1$s</string>
+    <string name="update_found_message">当前版本 %1$s，最新版本 %2$s。\n是否前往下载？</string>
+    <string name="update_latest">当前已是最新版本（%1$s）</string>
+    <string name="update_check_failed">检查更新失败：%1$s</string>
+    <string name="update_download">前往下载</string>
+    <string name="update_later">稍后再说</string>
+
+    <!-- 用户协议 / 隐私政策 -->
+    <string name="agreement_title">用户协议与隐私政策</string>
+    <string name="agreement_notice">请阅读并同意以下条款后继续使用本应用。</string>
+    <string name="agreement_accept">同意并继续</string>
+    <string name="agreement_decline">不同意</string>
+    <string name="agreement_declined">需要同意用户协议与隐私政策才能使用本应用</string>
+    <string name="agreement_terms">用户协议</string>
+    <string name="agreement_privacy">隐私政策</string>
+    <string name="agreement_open_web">在浏览器中查看完整版</string>
+    <string name="agreement_offline">当前无法加载网页版本，可稍后在「关于」页面查看完整条款。</string>
+    <string name="about_agreement">用户协议</string>
+    <string name="about_privacy">隐私政策</string>
+
+    <!-- 一起作文：风格与语言 -->
+    <string name="essay_style">风格</string>
+    <string name="essay_language">语言</string>
+    <string name="essay_style_prose">散文</string>
+    <string name="essay_style_narrative">记叙文</string>
+    <string name="essay_style_novel">小说</string>
+    <string name="essay_style_argumentative">议论文</string>
+    <string name="essay_style_expository">说明文</string>
+    <string name="essay_lang_chinese">中文</string>
+    <string name="essay_lang_english">英语</string>
+    <string name="essay_empty_topic_short">请先输入作文题目或要求</string>
 </resources>

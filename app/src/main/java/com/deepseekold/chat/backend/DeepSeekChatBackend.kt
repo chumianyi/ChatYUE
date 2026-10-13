@@ -127,15 +127,17 @@ class DeepSeekChatBackend(
 
                                 val event = runCatching { JSONObject(payload) }.getOrNull()
                                     ?: return@readSseEvents
-                                // 有些网关会在流中直接下发 error 对象。
-                                event.optJSONObject("error")?.let { error ->
-                                    streamErrorMessage = error.optString("message")
-                                        .ifBlank { error.toString() }
+                                val choices = event.optJSONArray("choices")
+                                val choice = if (choices != null && choices.length() > 0) {
+                                    choices.optJSONObject(0)
+                                } else {
+                                    null
+                                }
+                                if (choice == null) {
+                                    // 网关/上游的错误体，例如 {"code":30001,"message":"..."}
+                                    describeFailure(event)?.let { streamErrorMessage = it }
                                     return@readSseEvents
                                 }
-                                val choice = event.optJSONArray("choices")
-                                    ?.optJSONObject(0)
-                                    ?: return@readSseEvents
                                 val delta = choice.optJSONObject("delta")
                                     ?: JSONObject()
                                 val thinkingDelta = delta.optStringOrNull("reasoning_content")
@@ -387,35 +389,55 @@ class DeepSeekChatBackend(
         val json = runCatching { JSONObject(trimmed.substring(start, end + 1)) }.getOrNull()
             ?: return false
 
-        json.optJSONObject("error")?.let { error ->
+        val choice = json.optJSONArray("choices")?.optJSONObject(0)
+        if (choice != null) {
+            val message = choice.optJSONObject("message")
+            val plainContent = message?.optStringOrNull("content")
+                ?: choice.optStringOrNull("text")
+                ?: choice.optStringOrNull("content")
+            val plainThinking = message?.optStringOrNull("reasoning_content")
+            if (!plainContent.isNullOrEmpty() || !plainThinking.isNullOrEmpty()) {
+                complete(
+                    terminal = terminal,
+                    callback = callback,
+                    content = plainContent.orEmpty(),
+                    thinking = plainThinking.orEmpty(),
+                    finishReason = BackendFinishReason.STOP,
+                )
+                return true
+            }
+        }
+
+        // 没有 choices，但带着错误描述：直接把它当作业务错误抛出。
+        describeFailure(json)?.let { message ->
             dispatchFailure(
                 terminal,
                 callback,
-                BackendError(
-                    message = error.optStringOrNull("message") ?: error.toString(),
-                    code = error.optStringOrNull("code"),
-                    type = BackendErrorType.SERVER,
-                ),
+                BackendError(message = message, type = BackendErrorType.SERVER),
             )
             return true
         }
+        return false
+    }
 
-        val choice = json.optJSONArray("choices")?.optJSONObject(0) ?: return false
-        val message = choice.optJSONObject("message")
-        val plainContent = message?.optStringOrNull("content")
-            ?: choice.optStringOrNull("text")
-            ?: choice.optStringOrNull("content")
-        val plainThinking = message?.optStringOrNull("reasoning_content")
-        if (plainContent.isNullOrEmpty() && plainThinking.isNullOrEmpty()) return false
+    /**
+     * 识别网关或上游返回的错误体，兼容两种常见结构：
+     * - `{"error":{"message":"...","code":...}}`
+     * - `{"code":30001,"message":"..."}`（如上游余额不足、鉴权失败）
+     */
+    private fun describeFailure(json: JSONObject): String? {
+        json.optJSONObject("error")?.let { error ->
+            val message = error.optStringOrNull("message") ?: error.toString()
+            return gatewayMessage(message, error.opt("code"))
+        }
+        val message = json.optStringOrNull("message") ?: return null
+        return gatewayMessage(message, json.opt("code"))
+    }
 
-        complete(
-            terminal = terminal,
-            callback = callback,
-            content = plainContent.orEmpty(),
-            thinking = plainThinking.orEmpty(),
-            finishReason = BackendFinishReason.STOP,
-        )
-        return true
+    private fun gatewayMessage(message: String, code: Any?): String {
+        val codeText = code?.toString()?.takeIf { it.isNotBlank() && it != "null" }
+        val suffix = if (codeText == null) "" else "（错误码 $codeText）"
+        return "上游服务返回：$message$suffix"
     }
 
     /** 出错时附带一小段服务端原文，便于定位问题，同时避免刷屏。 */

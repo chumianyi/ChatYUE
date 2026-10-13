@@ -1,0 +1,39 @@
+{
+  "versionName": "1.1",
+  "versionCode": 2,
+  "releaseDate": "2026-10-14",
+  "downloadUrl": "https://github.com/chumianyi/DeepSeekOld/releases/latest",
+  "agreementUrl": "https://chumianyi.github.io/DeepSeekOld/agreement.html",
+  "privacyUrl": "https://chumianyi.github.io/DeepSeekOld/privacy.html",
+  "changelog": [
+    {
+      "versionName": "1.1",
+      "releaseDate": "2026-10-14",
+      "items": [
+        "新增「检查更新」与「更新日志」，版本信息由 GitHub Pages 托管，无需发版即可更新",
+        "新增用户协议与隐私政策：首次启动必须同意后使用，条款以网页版为准、可随时更新",
+        "新增联网搜索开关：开启后自动检索公开资料并结合资料回答",
+        "新增附件功能：可从设备相册中选择图片，或选择 txt 文本文件自动读取内容",
+        "新增图片与文本附件发送提示（模型仅支持识别文本）",
+        "一起作文新增 5 种写作风格（散文 / 记叙文 / 小说 / 议论文 / 说明文）与中英双语输出",
+        "智能翻译与一起作文不再展示思考过程，只呈现结果",
+        "翻译提示词收紧为「仅输出翻译内容，不输出其他任何话」",
+        "会话列表改为按时间由近到远分组：今天 / 昨天 / 7 天内 / 30 天内 / 更早",
+        "接口报错信息人性化，余额不足、密钥失效、限流等情况给出明确中文提示",
+        "主页欢迎语调整为「嗨，今天要干什么呢？」",
+        "下架海龟汤与成语接龙"
+      ]
+    },
+    {
+      "versionName": "1.0.0",
+      "releaseDate": "2026-10-13",
+      "items": [
+        "首个版本：固定接口、固定密钥、固定模型 deepseek-ai/DeepSeek-R1",
+        "仅思考模式，同时展示 reasoning_content 思考过程与 content 正式回答",
+        "上下文百分比显示与 85% 自动压缩为 system 摘要",
+        "侧边栏工具：智能翻译（5 组互译）、一起作文、海龟汤、成语接龙",
+        "支持明文 HTTP 接口"
+      ]
+    }
+  ]
+}

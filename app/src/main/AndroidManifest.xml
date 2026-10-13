@@ -4,6 +4,11 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- 选择相册图片需要读取设备中的图片（Android 13+ 使用细分权限） -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
 
     <application
         android:allowBackup="true"
@@ -30,6 +35,21 @@
         </activity>
 
         <activity
+            android:name=".AgreementActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DeepSeekOld.Tool" />
+
+        <activity
+            android:name=".ChangelogActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DeepSeekOld.Tool" />
+
+        <activity
+            android:name=".attachment.ImageGalleryActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DeepSeekOld.Tool" />
+
+        <activity
             android:name=".AboutActivity"
             android:exported="false"
             android:theme="@style/Theme.DeepSeekOld.Tool" />
@@ -46,17 +66,7 @@
             android:theme="@style/Theme.DeepSeekOld.Tool"
             android:windowSoftInputMode="adjustResize" />
 
-        <activity
-            android:name=".tools.TurtleSoupActivity"
-            android:exported="false"
-            android:theme="@style/Theme.DeepSeekOld.Tool"
-            android:windowSoftInputMode="adjustResize" />
 
-        <activity
-            android:name=".tools.IdiomChainActivity"
-            android:exported="false"
-            android:theme="@style/Theme.DeepSeekOld.Tool"
-            android:windowSoftInputMode="adjustResize" />
     </application>
 
 </manifest>

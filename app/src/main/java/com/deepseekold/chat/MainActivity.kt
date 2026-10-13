@@ -1,14 +1,17 @@
 package com.deepseekold.chat
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.PopupMenu
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -24,17 +27,21 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.deepseekold.chat.attachment.ImageGalleryActivity
+import com.deepseekold.chat.attachment.MediaImageStore
 import com.deepseekold.chat.backend.BackendErrorType
 import com.deepseekold.chat.backend.BackendFinishReason
 import com.deepseekold.chat.backend.BackendMessage
 import com.deepseekold.chat.backend.BackendRole
 import com.deepseekold.chat.backend.ChatRequest
 import com.deepseekold.chat.databinding.ActivityMainBinding
+import com.deepseekold.chat.remote.RemoteConfigRepository
+import com.deepseekold.chat.search.WebSearchClient
 import com.deepseekold.chat.tools.EssayActivity
-import com.deepseekold.chat.tools.IdiomChainActivity
+import com.deepseekold.chat.tools.ToolPrompts
 import com.deepseekold.chat.tools.TranslationActivity
-import com.deepseekold.chat.tools.TurtleSoupActivity
 import io.noties.markwon.Markwon
+import java.util.concurrent.Executors
 import kotlin.math.min
 
 class MainActivity : AppCompatActivity() {
@@ -51,8 +58,43 @@ class MainActivity : AppCompatActivity() {
     private var pendingMessageReloadConversationId: Long? = null
     private var pendingMessageListScroll: Runnable? = null
 
+    private var webSearchEnabled = false
+    private var pendingImageUri: Uri? = null
+    private var pendingImageName: String? = null
+    private var pendingTextName: String? = null
+    private var pendingTextContent: String? = null
+
+    private val ioExecutor = Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "deepseek-io").apply { isDaemon = true }
+    }
+
+    private val galleryLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+        val data = result.data ?: return@registerForActivityResult
+        val uri = data.data ?: return@registerForActivityResult
+        val name = data.getStringExtra(ImageGalleryActivity.EXTRA_IMAGE_NAME)
+            ?: getString(R.string.attachment_image_label)
+        setImageAttachment(uri, name)
+    }
+
+    private val textFileLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) readTextAttachment(uri)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 首次启动必须先同意用户协议与隐私政策。
+        if (!AgreementStore.isAccepted(this)) {
+            startActivity(Intent(this, AgreementActivity::class.java))
+            finish()
+            return
+        }
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -83,6 +125,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         if (!isChangingConfigurations) {
             viewModel.cancelGeneration()
+            ioExecutor.shutdownNow()
         }
         super.onDestroy()
     }
@@ -167,6 +210,17 @@ class MainActivity : AppCompatActivity() {
     private fun configureComposer() {
         // 思考模式固定开启，不可切换，这里只做视觉标识。
         binding.thinkingModeLabel.isSelected = true
+        updateWebSearchButton()
+        binding.webSearchButton.setOnClickListener {
+            webSearchEnabled = !webSearchEnabled
+            updateWebSearchButton()
+            CompatToast.show(
+                this,
+                if (webSearchEnabled) R.string.web_search_enabled else R.string.web_search_disabled,
+            )
+        }
+        binding.attachmentRemove.setOnClickListener { clearAttachments() }
+
         binding.messageInput.doAfterTextChanged {
             updateSendButton()
         }
@@ -175,6 +229,13 @@ class MainActivity : AppCompatActivity() {
         }
         updateSendButton()
         updateContextIndicator(emptyList())
+    }
+
+    private fun updateWebSearchButton() {
+        binding.webSearchButton.isSelected = webSearchEnabled
+        binding.webSearchButton.contentDescription = getString(
+            if (webSearchEnabled) R.string.web_search_enabled else R.string.web_search_disabled,
+        )
     }
 
     private fun configureActions() {
@@ -194,7 +255,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         binding.addButton.setOnClickListener {
-            showCompatibilityNotice(R.string.attachment_unavailable)
+            showAttachmentMenu()
         }
         binding.moreButton.setOnClickListener {
             showMoreMenu()
@@ -204,12 +265,6 @@ class MainActivity : AppCompatActivity() {
         }
         binding.toolEssay.setOnClickListener {
             openTool(EssayActivity::class.java)
-        }
-        binding.toolSoup.setOnClickListener {
-            openTool(TurtleSoupActivity::class.java)
-        }
-        binding.toolIdiom.setOnClickListener {
-            openTool(IdiomChainActivity::class.java)
         }
     }
 
@@ -232,6 +287,105 @@ class MainActivity : AppCompatActivity() {
             },
         )
     }
+
+    // ---------------- 附件 ----------------
+
+    private fun showAttachmentMenu() {
+        val options = arrayOf(
+            getString(R.string.attach_image),
+            getString(R.string.attach_text),
+            getString(R.string.attach_cancel),
+        )
+        AlertDialog.Builder(this)
+            .setTitle(R.string.attach_title)
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> galleryLauncher.launch(
+                        Intent(this, ImageGalleryActivity::class.java),
+                    )
+
+                    1 -> textFileLauncher.launch(arrayOf("text/plain"))
+
+                    else -> Unit
+                }
+            }
+            .show()
+    }
+
+    private fun setImageAttachment(uri: Uri, name: String) {
+        pendingImageUri = uri
+        pendingImageName = name
+        binding.attachmentThumb.visibility = View.VISIBLE
+        binding.attachmentThumb.setImageDrawable(null)
+        com.deepseekold.chat.attachment.ImageLoader.load(
+            context = this,
+            uri = uri,
+            targetSizePx = dpToPx(72),
+            imageView = binding.attachmentThumb,
+        )
+        binding.attachmentName.text = getString(R.string.attachment_image_label) + " · " + name
+        binding.attachmentBar.visibility = View.VISIBLE
+        // 需求：上传图片时自动提示模型只支持文本。
+        CompatToast.show(this, R.string.image_text_only_notice, android.widget.Toast.LENGTH_LONG)
+        updateSendButton()
+    }
+
+    private fun readTextAttachment(uri: Uri) {
+        CompatToast.show(this, R.string.attachment_reading)
+        ioExecutor.execute {
+            val name = MediaImageStore.displayName(this, uri)
+            val content = MediaImageStore.readText(this, uri)
+            runOnUiThread {
+                when {
+                    content == null -> CompatToast.show(this, R.string.attachment_too_large)
+                    content.isEmpty() -> CompatToast.show(this, R.string.attachment_read_failed)
+                    else -> {
+                        pendingTextName = name
+                        pendingTextContent = content
+                        binding.attachmentThumb.visibility = View.GONE
+                        binding.attachmentName.text =
+                            getString(R.string.attachment_text_label) + " · " + name +
+                                "（" + content.length + " 字）"
+                        binding.attachmentBar.visibility = View.VISIBLE
+                        updateSendButton()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun clearAttachments() {
+        pendingImageUri = null
+        pendingImageName = null
+        pendingTextName = null
+        pendingTextContent = null
+        binding.attachmentThumb.setImageDrawable(null)
+        binding.attachmentBar.visibility = View.GONE
+        updateSendButton()
+    }
+
+    private fun hasAttachment(): Boolean =
+        pendingImageUri != null || pendingTextContent != null
+
+    /** 把附件内容拼进用户消息：图片只做说明，txt 内容直接内联给模型读取。 */
+    private fun buildAttachmentBlock(): String {
+        val block = StringBuilder()
+        pendingImageName?.let { name ->
+            block.append("\n\n[图片附件] ")
+                .append(name)
+                .append("（本模型仅支持识别文本，无法识别图片内容）")
+        }
+        pendingTextContent?.let { content ->
+            block.append("\n\n[文本附件] ")
+                .append(pendingTextName ?: "")
+                .append('\n')
+                .append(content)
+                .append("\n[/文本附件]")
+        }
+        return block.toString()
+    }
+
+    // ---------------- 生成 ----------------
 
     private fun observeGeneration() {
         viewModel.generationState.observe(this) { state ->
@@ -326,7 +480,7 @@ class MainActivity : AppCompatActivity() {
                 is ContextEvent.CompressionFailed -> {
                     CompatToast.show(
                         this,
-                        getString(R.string.context_compress_failed, event.message),
+                        getString(R.string.context_compress_failed, humanize(event.message)),
                         android.widget.Toast.LENGTH_LONG,
                     )
                     viewModel.acknowledgeContextEvent()
@@ -336,51 +490,78 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun sendMessage() {
-        val content = binding.messageInput.text?.toString()?.trim().orEmpty()
-        if (content.isEmpty()) return
+        val rawInput = binding.messageInput.text?.toString()?.trim().orEmpty()
+        if (rawInput.isEmpty() && !hasAttachment()) return
         if (!hasUsableNetwork()) {
             CompatToast.show(this, R.string.network_unavailable, android.widget.Toast.LENGTH_LONG)
             return
         }
 
+        val userContent = (rawInput + buildAttachmentBlock()).trim()
         val wasNewConversation = currentConversationId == null
         val conversationId = currentConversationId ?: repository.createConversation(
-            ConversationFormatter.titleFrom(content),
+            ConversationFormatter.titleFrom(userContent),
         ).also {
             currentConversationId = it
-            binding.chatTitle.text = ConversationFormatter.titleFrom(content)
+            binding.chatTitle.text = ConversationFormatter.titleFrom(userContent)
         }
 
-        repository.addMessage(conversationId, MessageRole.USER, content)
+        repository.addMessage(conversationId, MessageRole.USER, userContent)
         if (wasNewConversation) {
             repository.updateConversationTitle(
                 conversationId,
-                ConversationFormatter.titleFrom(content),
+                ConversationFormatter.titleFrom(userContent),
             )
         }
         binding.messageInput.text?.clear()
+        clearAttachments()
         followStreaming = true
         pendingStreamingState = null
         pendingMessageReloadConversationId = null
+        loadMessages(conversationId)
 
-        val request = ChatRequest(
-            conversationId = conversationId.toString(),
-            messages = repository.getMessages(conversationId)
-                .mapNotNull { message ->
-                    when (message.role) {
-                        MessageRole.USER -> BackendMessage(BackendRole.USER, message.content)
-                        MessageRole.ASSISTANT -> {
-                            BackendMessage(BackendRole.ASSISTANT, message.content)
-                        }
-                        MessageRole.SYSTEM -> {
-                            BackendMessage(BackendRole.SYSTEM, message.content)
-                        }
-                        MessageRole.THINKING_ACTIVE,
-                        MessageRole.THINKING_FINISHED -> null
+        val query = rawInput.ifEmpty { userContent }
+        if (webSearchEnabled) {
+            CompatToast.show(this, R.string.web_search_running, android.widget.Toast.LENGTH_SHORT)
+            ioExecutor.execute {
+                val results = runCatching { WebSearchClient.search(query) }
+                    .getOrDefault(emptyList())
+                val context = WebSearchClient.buildContext(query, results)
+                runOnUiThread {
+                    if (context.isEmpty()) {
+                        CompatToast.show(this, R.string.web_search_no_result)
                     }
-                },
-        )
-        viewModel.sendMessage(request)
+                    dispatchChatRequest(conversationId, context)
+                }
+            }
+        } else {
+            dispatchChatRequest(conversationId, "")
+        }
+    }
+
+    private fun dispatchChatRequest(conversationId: Long, searchContext: String) {
+        val messages = buildList {
+            if (searchContext.isNotBlank()) {
+                add(
+                    BackendMessage(
+                        BackendRole.SYSTEM,
+                        ToolPrompts.webSearchSystemPrompt(searchContext),
+                    ),
+                )
+            }
+            repository.getMessages(conversationId).forEach { message ->
+                when (message.role) {
+                    MessageRole.USER -> add(BackendMessage(BackendRole.USER, message.content))
+                    MessageRole.ASSISTANT ->
+                        add(BackendMessage(BackendRole.ASSISTANT, message.content))
+
+                    MessageRole.SYSTEM -> add(BackendMessage(BackendRole.SYSTEM, message.content))
+                    MessageRole.THINKING_ACTIVE,
+                    MessageRole.THINKING_FINISHED -> Unit
+                }
+            }
+        }
+        viewModel.sendMessage(ChatRequest(conversationId.toString(), messages))
     }
 
     private fun restoreConversation(savedInstanceState: Bundle?) {
@@ -415,6 +596,7 @@ class MainActivity : AppCompatActivity() {
         pendingMessageReloadConversationId = null
         binding.chatTitle.setText(R.string.new_chat)
         binding.messageInput.text?.clear()
+        clearAttachments()
         showMessages(emptyList())
         hideKeyboard()
         refreshConversationList(binding.searchInput.text?.toString().orEmpty())
@@ -580,12 +762,26 @@ class MainActivity : AppCompatActivity() {
         conversationAdapter.submitItems(items, currentConversationId)
     }
 
+    // ---------------- 菜单 ----------------
+
     private fun showMoreMenu() {
         PopupMenu(this, binding.moreButton).apply {
-            menu.add(0, MENU_ABOUT, 0, R.string.about_menu)
-            menu.add(0, MENU_CLEAR_HISTORY, 1, R.string.clear_history)
+            menu.add(0, MENU_CHANGELOG, 0, R.string.menu_changelog)
+            menu.add(0, MENU_CHECK_UPDATE, 1, R.string.menu_check_update)
+            menu.add(0, MENU_ABOUT, 2, R.string.about_menu)
+            menu.add(0, MENU_CLEAR_HISTORY, 3, R.string.clear_history)
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
+                    MENU_CHANGELOG -> {
+                        startActivity(Intent(this@MainActivity, ChangelogActivity::class.java))
+                        true
+                    }
+
+                    MENU_CHECK_UPDATE -> {
+                        checkUpdate()
+                        true
+                    }
+
                     MENU_ABOUT -> {
                         startActivity(Intent(this@MainActivity, AboutActivity::class.java))
                         true
@@ -600,6 +796,79 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }.show()
+    }
+
+    private fun checkUpdate() {
+        CompatToast.show(this, R.string.changelog_loading)
+        ioExecutor.execute {
+            val result = runCatching { RemoteConfigRepository.load(this) }
+            runOnUiThread {
+                result
+                    .onSuccess { config ->
+                        if (config.versionCode > currentVersionCode()) {
+                            AlertDialog.Builder(this)
+                                .setTitle(
+                                    getString(R.string.update_found_title, config.versionName),
+                                )
+                                .setMessage(
+                                    getString(
+                                        R.string.update_found_message,
+                                        currentVersionName(),
+                                        config.versionName,
+                                    ),
+                                )
+                                .setPositiveButton(R.string.update_download) { _, _ ->
+                                    openUrl(config.downloadUrl)
+                                }
+                                .setNegativeButton(R.string.update_later, null)
+                                .show()
+                        } else {
+                            CompatToast.show(
+                                this,
+                                getString(R.string.update_latest, currentVersionName()),
+                                android.widget.Toast.LENGTH_LONG,
+                            )
+                        }
+                    }
+                    .onFailure { error ->
+                        CompatToast.show(
+                            this,
+                            getString(
+                                R.string.update_check_failed,
+                                humanize(error.message.orEmpty().ifBlank { "网络异常" }),
+                            ),
+                            android.widget.Toast.LENGTH_LONG,
+                        )
+                    }
+            }
+        }
+    }
+
+    private fun currentVersionName(): String {
+        return runCatching {
+            packageManager.getPackageInfo(packageName, 0).versionName.orEmpty()
+        }.getOrDefault("1.0").ifBlank { "1.0" }
+    }
+
+    private fun currentVersionCode(): Int {
+        return runCatching {
+            val info = packageManager.getPackageInfo(packageName, 0)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                info.longVersionCode.toInt()
+            } else {
+                @Suppress("DEPRECATION")
+                info.versionCode
+            }
+        }.getOrDefault(1)
+    }
+
+    private fun openUrl(url: String) {
+        if (url.isBlank()) return
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        } catch (e: ActivityNotFoundException) {
+            CompatToast.show(this, url, android.widget.Toast.LENGTH_LONG)
+        }
     }
 
     private fun confirmClearHistory() {
@@ -617,6 +886,8 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    // ---------------- 状态与提示 ----------------
+
     private fun stopGeneration(showNotice: Boolean) {
         if (!isGenerating()) return
         viewModel.cancelGeneration()
@@ -632,6 +903,7 @@ class MainActivity : AppCompatActivity() {
     private fun updateComposer(isGenerating: Boolean) {
         binding.messageInput.isEnabled = !isGenerating
         binding.addButton.isEnabled = !isGenerating
+        binding.webSearchButton.isEnabled = !isGenerating
         binding.sendButton.setImageResource(
             if (isGenerating) R.drawable.ic_stop else R.drawable.ic_send,
         )
@@ -643,8 +915,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateSendButton() {
         val isGenerating = isGenerating()
-        binding.sendButton.isEnabled =
-            isGenerating || !binding.messageInput.text.isNullOrBlank()
+        val hasInput = !binding.messageInput.text.isNullOrBlank() || hasAttachment()
+        binding.sendButton.isEnabled = isGenerating || hasInput
     }
 
     private fun showCompletionNotice(finishReason: BackendFinishReason) {
@@ -662,8 +934,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showBackendError(type: BackendErrorType, message: String) {
-        CompatToast.show(this, message, android.widget.Toast.LENGTH_LONG)
+        // 技术性报错统一转成人能看懂的提示。
+        CompatToast.show(this, humanize(message), android.widget.Toast.LENGTH_LONG)
     }
+
+    private fun humanize(message: String): String = HumanizeError.humanize(message)
 
     private fun showCompatibilityNotice(@StringRes messageRes: Int) {
         CompatToast.show(this, messageRes)
@@ -701,8 +976,10 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val STATE_CONVERSATION_ID = "state_conversation_id"
         private const val NO_CONVERSATION_ID = -1L
-        private const val MENU_CLEAR_HISTORY = 1
-        private const val MENU_ABOUT = 2
+        private const val MENU_CHANGELOG = 1
+        private const val MENU_CHECK_UPDATE = 2
+        private const val MENU_ABOUT = 3
+        private const val MENU_CLEAR_HISTORY = 4
         private const val STREAM_THINKING_ID = -1L
         private const val STREAM_ASSISTANT_ID = -2L
     }

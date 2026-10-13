@@ -31,9 +31,12 @@ data class ChatMessage(
     val createdAt: Long,
 )
 
+/** 侧边栏会话按时间由近到远分组。 */
 enum class ConversationSection {
     TODAY,
     YESTERDAY,
+    LAST_7_DAYS,
+    LAST_30_DAYS,
     EARLIER,
 }
 

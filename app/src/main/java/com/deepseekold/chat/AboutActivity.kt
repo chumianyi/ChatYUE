@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.deepseekold.chat.databinding.ActivityAboutBinding
+import com.deepseekold.chat.remote.RemoteConfig
 
 /**
  * 关于页面：标注原项目、本项目地址与 GPLv3 开源许可。
@@ -29,6 +30,12 @@ class AboutActivity : AppCompatActivity() {
         }
         binding.licenseRow.setOnClickListener {
             openUrl(getString(R.string.about_license_url))
+        }
+        binding.agreementButton.setOnClickListener {
+            openUrl(RemoteConfig.AGREEMENT_URL)
+        }
+        binding.privacyButton.setOnClickListener {
+            openUrl(RemoteConfig.PRIVACY_URL)
         }
     }
 

@@ -212,6 +212,32 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="16dp">
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/agreementButton"
+                style="@style/Widget.DeepSeekOld.SecondaryButton"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_weight="1"
+                android:text="@string/about_agreement" />
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/privacyButton"
+                style="@style/Widget.DeepSeekOld.SecondaryButton"
+                android:layout_width="0dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="@string/about_privacy" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:layout_marginTop="10dp"
             android:layout_marginEnd="16dp"

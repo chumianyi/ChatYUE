@@ -197,7 +197,61 @@ class DeepSeekChatBackendTest {
         )
 
         assertTrue(callback.failed.await(5, TimeUnit.SECONDS))
-        assertEquals("upstream timeout", callback.error?.message)
+        assertEquals("上游服务返回：upstream timeout", callback.error?.message)
+    }
+
+    @Test
+    fun gatewayErrorBodyIsSurfaced() {
+        // 代理以 HTTP 200 + text/event-stream 返回了上游的业务错误（例如余额不足）。
+        server.enqueue(
+            MockResponse()
+                .setHeader("Content-Type", "text/event-stream")
+                .setBody(
+                    """{"code":30001,""" +
+                        """"message":"Sorry, your account balance is insufficient",""" +
+                        """"data":null}""",
+                ),
+        )
+
+        val callback = RecordingCallback()
+        createBackend().sendMessage(
+            ChatRequest(
+                conversationId = "1",
+                messages = listOf(BackendMessage(BackendRole.USER, "问题")),
+            ),
+            callback,
+        )
+
+        assertTrue(callback.failed.await(5, TimeUnit.SECONDS))
+        assertEquals(
+            "上游服务返回：Sorry, your account balance is insufficient（错误码 30001）",
+            callback.error?.message,
+        )
+        assertEquals(BackendErrorType.SERVER, callback.error?.type)
+    }
+
+    @Test
+    fun sseWrappedGatewayErrorIsSurfaced() {
+        server.enqueue(
+            MockResponse()
+                .setHeader("Content-Type", "text/event-stream")
+                .setBody("data: {\"code\":30002,\"message\":\"rate limit reached\"}\n\n"),
+        )
+
+        val callback = RecordingCallback()
+        createBackend().sendMessage(
+            ChatRequest(
+                conversationId = "1",
+                messages = listOf(BackendMessage(BackendRole.USER, "问题")),
+            ),
+            callback,
+        )
+
+        assertTrue(callback.failed.await(5, TimeUnit.SECONDS))
+        assertEquals(
+            "上游服务返回：rate limit reached（错误码 30002）",
+            callback.error?.message,
+        )
     }
 
     @Test
