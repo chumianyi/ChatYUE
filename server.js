@@ -10,7 +10,7 @@ const HOST = '127.0.0.1';
 const CLIENT_KEY = 'sk-123456789012345678901234567890';
 const UPSTREAM_KEY = 'sk-iiqurprllifkwnctseuvldsqvqedymqhsmsvjneddigffyps';
 const UPSTREAM_URL = 'https://api.siliconflow.cn/v1/chat/completions';
-const FORCED_MODEL = 'deepseek-ai/DeepSeek-R1';
+const FORCED_MODEL = 'deepseek-ai/DeepSeek-R1-0528-Qwen3-8B';
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.raw({ type: '*/*', limit: '50mb' }));
