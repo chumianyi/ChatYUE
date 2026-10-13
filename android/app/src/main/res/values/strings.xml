@@ -1,0 +1,135 @@
+<resources>
+    <string name="app_name">DeepSeekOld</string>
+
+    <!-- 主界面 -->
+    <string name="new_chat">新对话</string>
+    <string name="open_history">打开历史记录</string>
+    <string name="create_new_chat">新建对话</string>
+    <string name="welcome_title">你好，我是 DeepSeek R1</string>
+    <string name="welcome_subtitle">思考过程与正式回答会同时展示</string>
+    <string name="message_hint">输入消息</string>
+    <string name="send_message">发送消息</string>
+    <string name="stop_generation">停止生成</string>
+    <string name="add_attachment">添加附件</string>
+    <string name="search_conversations">搜索对话内容…</string>
+    <string name="account_name">DeepSeekOld</string>
+    <string name="more_options">更多选项</string>
+    <string name="navigate_back">返回</string>
+
+    <!-- 固定配置说明 -->
+    <string name="thinking_mode_label">深度思考 · 固定开启</string>
+    <string name="thinking_mode_fixed">思考模式已固定开启，不可切换</string>
+
+    <!-- 上下文 -->
+    <string name="context_usage">上下文 %1$d%%</string>
+    <string name="context_usage_zero">上下文 —</string>
+    <string name="context_usage_title">当前上下文占用</string>
+    <string name="context_compressing">上下文已达 %1$d%%，正在自动压缩…</string>
+    <string name="context_compressed">上下文已压缩至 %1$d%%</string>
+    <string name="context_compress_failed">上下文压缩失败：%1$s</string>
+    <string name="summary_title">上下文摘要（已自动压缩）</string>
+
+    <!-- 侧边栏功能 -->
+    <string name="tools_title">功能</string>
+    <string name="tool_translate">智能翻译</string>
+    <string name="tool_essay">一起作文</string>
+    <string name="tool_soup">海龟汤</string>
+    <string name="tool_idiom">成语接龙</string>
+
+    <!-- 关于 -->
+    <string name="about_menu">关于</string>
+    <string name="about_title">关于</string>
+    <string name="about_version">版本 %1$s</string>
+    <string name="about_origin_title">原项目</string>
+    <string name="about_origin_name">DeepSeek Lite</string>
+    <string name="about_origin_url">https://github.com/benzhoupo/deepseek-lite</string>
+    <string name="about_origin_desc">本项目由 DeepSeek Lite 改造而来，原作者与原始代码版权归 benzhoupo 所有。</string>
+    <string name="about_project_title">本项目地址</string>
+    <string name="about_project_url">https://github.com/chumianyi/DeepSeekOld</string>
+    <string name="about_project_desc">点击可在浏览器中打开项目主页，构建与打包由 GitHub Actions 云端完成。</string>
+    <string name="about_license_title">开源许可</string>
+    <string name="about_license_value">GNU General Public License v3.0</string>
+    <string name="about_license_desc">本项目使用 GPLv3 开源。你可以自由使用、修改和再分发本项目，但再分发时必须以相同许可协议开源，并保留版权声明。</string>
+    <string name="about_license_url">https://www.gnu.org/licenses/gpl-3.0.html</string>
+    <string name="about_fixed_title">内置固定配置</string>
+    <string name="about_fixed_desc">接口地址、模型与密钥均已固定内置，App 内不提供查看与修改入口；仅支持思考模式，不支持切换。</string>
+
+    <!-- 通用 -->
+    <string name="paste">粘贴</string>
+    <string name="copy">复制</string>
+    <string name="copy_all">复制全部</string>
+    <string name="copied">已复制</string>
+    <string name="clear_history">清空历史记录</string>
+    <string name="clear_history_title">清空全部对话？</string>
+    <string name="clear_history_message">此操作会删除设备上保存的全部对话和消息。</string>
+    <string name="cancel">取消</string>
+    <string name="clear">清空</string>
+    <string name="section_today">今天</string>
+    <string name="section_yesterday">昨天</string>
+    <string name="section_earlier">更早</string>
+    <string name="attachment_unavailable">暂不支持添加附件</string>
+    <string name="thinking_in_progress">思考中...</string>
+    <string name="thinking_finished">已深度思考</string>
+    <string name="collapse_thinking">收起思考过程</string>
+    <string name="expand_thinking">展开思考过程</string>
+    <string name="generation_stopped">已停止生成</string>
+    <string name="response_truncated">回答因长度限制而提前结束，已保存现有内容。</string>
+    <string name="response_filtered">回答因内容过滤而提前结束，已保存现有内容。</string>
+    <string name="waiting_for_response">正在等待模型响应…</string>
+    <string name="network_unavailable">当前网络不可用，请检查网络连接后重试。</string>
+    <string name="generating">生成中…</string>
+    <string name="please_wait">请等待当前生成结束</string>
+
+    <!-- 智能翻译 -->
+    <string name="translate_title">智能翻译</string>
+    <string name="translate_direction">翻译方向</string>
+    <string name="translate_swap">交换方向</string>
+    <string name="translate_input_hint">输入要翻译的内容</string>
+    <string name="translate_start">翻译</string>
+    <string name="translate_result_hint">译文将显示在这里</string>
+    <string name="translate_empty_input">请先输入要翻译的内容</string>
+
+    <!-- 一起作文 -->
+    <string name="essay_title">一起作文</string>
+    <string name="essay_topic_hint">输入作文题目或写作要求</string>
+    <string name="essay_word_count">目标字数：%1$d 字</string>
+    <string name="essay_result_count">实际字数：%1$d 字</string>
+    <string name="essay_generate">生成作文</string>
+    <string name="essay_empty_topic">请先输入作文题目或要求</string>
+
+    <!-- 海龟汤 -->
+    <string name="soup_title">海龟汤</string>
+    <string name="soup_puzzle_label">谜面</string>
+    <string name="soup_puzzle_placeholder">点击下方按钮由 AI 出题</string>
+    <string name="soup_start">开始出题</string>
+    <string name="soup_restart">重新出题</string>
+    <string name="soup_hint_counter">剩余提示机会：%1$d / %2$d</string>
+    <string name="soup_hint_button">索要提示（剩 %1$d 次）</string>
+    <string name="soup_hint_button_plain">索要提示</string>
+    <string name="soup_ask">提问</string>
+    <string name="soup_guess">猜谜底</string>
+    <string name="soup_input_hint">输入你的问题或答案</string>
+    <string name="soup_hints_exhausted">3 次提示机会已用完</string>
+    <string name="soup_need_puzzle">请先点击「开始出题」</string>
+    <string name="soup_puzzle_failed">题目解析失败，请重新出题</string>
+    <string name="soup_victory_title">猜中啦！</string>
+    <string name="soup_victory_message">谜底：%1$s</string>
+    <string name="soup_answer_reveal">谜底：%1$s</string>
+    <string name="soup_turn_hint">你可以提问，AI 只会回答「是」「否」或「提示」</string>
+
+    <!-- 成语接龙 -->
+    <string name="idiom_title">成语接龙</string>
+    <string name="idiom_current_label">当前成语</string>
+    <string name="idiom_none">尚未开始</string>
+    <string name="idiom_start">开始游戏</string>
+    <string name="idiom_restart">重新开始</string>
+    <string name="idiom_input_hint">输入一个四字成语</string>
+    <string name="idiom_submit">接龙</string>
+    <string name="idiom_need_start">请先点击「开始游戏」</string>
+    <string name="idiom_starting">正在出题…</string>
+    <string name="idiom_your_turn">轮到你接：首字读音与「%1$s」末字相同即可</string>
+    <string name="idiom_ai_next">AI 接：%1$s</string>
+    <string name="idiom_ai_give_up">AI 接不上了，你赢了！</string>
+    <string name="idiom_game_over">游戏结束</string>
+    <string name="idiom_empty_input">请先输入一个四字成语</string>
+</resources>

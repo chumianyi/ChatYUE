@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  应用需要访问 http://（明文 HTTP）接口，因此显式放开明文流量。
+  默认只放行固定的接口主机，其余域名维持 Android 默认策略。
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">103.236.99.177</domain>
+    </domain-config>
+</network-security-config>
