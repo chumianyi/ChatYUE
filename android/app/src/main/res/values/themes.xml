@@ -12,7 +12,7 @@
         <item name="windowActionModeOverlay">true</item>
     </style>
 
-    <style name="Widget.DeepSeekOld.DrawerToolRow">
+    <style name="Widget.DeepSeekOld.DrawerToolRow" parent="">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">44dp</item>
         <item name="android:background">?attr/selectableItemBackground</item>
@@ -24,7 +24,7 @@
         <item name="android:paddingEnd">18dp</item>
     </style>
 
-    <style name="Widget.DeepSeekOld.DrawerToolLabel">
+    <style name="Widget.DeepSeekOld.DrawerToolLabel" parent="">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:layout_marginStart">12dp</item>
@@ -32,7 +32,7 @@
         <item name="android:textSize">15sp</item>
     </style>
 
-    <style name="Widget.DeepSeekOld.ToolHeaderTitle">
+    <style name="Widget.DeepSeekOld.ToolHeaderTitle" parent="">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">match_parent</item>
         <item name="android:layout_gravity">center</item>

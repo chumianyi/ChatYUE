@@ -64,7 +64,7 @@ class EssayActivity : BaseToolActivity() {
     private fun startEssay() {
         val topic = binding.topicInput.text?.toString()?.trim().orEmpty()
         if (topic.isEmpty()) {
-            toast(getString(R.string.essay_empty_input))
+            toast(getString(R.string.essay_empty_topic))
             return
         }
 
