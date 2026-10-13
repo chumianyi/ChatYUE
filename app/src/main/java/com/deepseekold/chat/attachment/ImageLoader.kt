@@ -19,10 +19,10 @@ object ImageLoader {
     }
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    private val cache = LruCache<String, Bitmap>(
+    private val cache = object : LruCache<String, Bitmap>(
         (Runtime.getRuntime().maxMemory() / 8).toInt().coerceAtLeast(4 * 1024 * 1024),
     ) {
-        it.byteCount
+        override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount
     }
 
     fun load(context: Context, uri: Uri, targetSizePx: Int, imageView: ImageView) {
