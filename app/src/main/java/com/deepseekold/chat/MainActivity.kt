@@ -51,6 +51,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var messageAdapter: ChatMessageAdapter
     private lateinit var conversationAdapter: ConversationAdapter
 
+    /** onCreate 可能因「未同意协议」提前返回，用它避免 onDestroy 访问未初始化的字段。 */
+    private var initialized = false
+
     private var currentConversationId: Long? = null
     private var followStreaming = true
     private var isMessageListScrolling = false
@@ -112,6 +115,7 @@ class MainActivity : AppCompatActivity() {
 
         restoreConversation(savedInstanceState)
         refreshConversationList()
+        initialized = true
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -123,10 +127,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        if (!isChangingConfigurations) {
+        // initialized 为 false 说明本次 onCreate 直接跳去了协议页，此时还没创建 ViewModel。
+        if (initialized && !isChangingConfigurations) {
             viewModel.cancelGeneration()
-            ioExecutor.shutdownNow()
         }
+        ioExecutor.shutdownNow()
         super.onDestroy()
     }
 

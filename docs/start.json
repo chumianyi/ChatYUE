@@ -1,11 +1,18 @@
 {
-  "versionName": "1.1",
-  "versionCode": 2,
+  "versionName": "1.1.1",
+  "versionCode": 3,
   "releaseDate": "2026-10-14",
   "downloadUrl": "https://github.com/chumianyi/DeepSeekOld/releases/latest",
   "agreementUrl": "https://chumianyi.github.io/DeepSeekOld/agreement.html",
   "privacyUrl": "https://chumianyi.github.io/DeepSeekOld/privacy.html",
   "changelog": [
+    {
+      "versionName": "1.1.1",
+      "releaseDate": "2026-10-14",
+      "items": [
+        "修复首次启动跳转用户协议页后返回时可能闪退的问题（MainActivity 销毁时访问未初始化的 ViewModel）"
+      ]
+    },
     {
       "versionName": "1.1",
       "releaseDate": "2026-10-14",
