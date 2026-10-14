@@ -13,3 +13,8 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# veryoldDpSk 独立构建
+veryoldDpSk/build/
+veryoldDpSk/.gradle/
+veryoldDpSk/local.properties
