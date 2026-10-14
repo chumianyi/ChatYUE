@@ -1,10 +1,9 @@
 [versions]
 agp = "8.13.2"
 kotlin = "2.4.20"
-# Compose 1.12+ 要求 compileSdk 37；1.11.x 只要求 35，与 compileSdk 36 兼容
-composeUi = "1.11.0"
-activityCompose = "1.13.0"
-miuix = "0.8.8"
+# Compose 1.10+ 要求 minSdk 23，1.9.0 是仍支持 Android 5.0（API 21）的最新版本
+composeUi = "1.9.0"
+activityCompose = "1.11.0"
 coreKtx = "1.10.1"
 junit = "4.13.2"
 junitVersion = "1.1.5"
@@ -38,10 +37,6 @@ androidx-activity-compose = { group = "androidx.activity", name = "activity-comp
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui", version.ref = "composeUi" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "composeUi" }
 androidx-compose-material-icons = { group = "androidx.compose.material", name = "material-icons-core", version = "1.7.8" }
-
-# Miuix（小米 HyperOS 设计语言组件库，Apache-2.0）
-# 0.9.x 要求 compileSdk 37（需 AGP 9），0.8.8 是支持 compileSdk 36 的最新版本
-miuix = { group = "top.yukonga.miuix.kmp", name = "miuix", version.ref = "miuix" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -1,21 +1,15 @@
 package com.deepseekold.chat.ui
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.theme.darkColorScheme
-import top.yukonga.miuix.kmp.theme.lightColorScheme
+import com.deepseekold.chat.ui.design.MiuixTheme
 
 /**
- * 全局主题：接入 Miuix（小米 HyperOS 设计语言，Apache-2.0）。
+ * 全局主题：HyperOS（Miuix）设计语言，深浅色跟随系统。
  *
- * 深色/浅色跟随系统，主色使用 Miuix 默认的小米蓝 #3482FF。
+ * 组件实现见 [com.deepseekold.chat.ui.design]，完全基于 Compose 基础库，
+ * 不引入需要 Android 6.0 的第三方 UI 库，确保可安装在 Android 5.0。
  */
 @Composable
 fun DeepSeekOldTheme(content: @Composable () -> Unit) {
-    val colors = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()
-    MiuixTheme(
-        colors = colors,
-        content = content,
-    )
+    MiuixTheme(content = content)
 }

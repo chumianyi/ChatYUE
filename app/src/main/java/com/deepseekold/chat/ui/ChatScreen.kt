@@ -66,14 +66,14 @@ import io.noties.markwon.Markwon
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.basic.SmallTopAppBar
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.basic.TextField
-import top.yukonga.miuix.kmp.theme.MiuixTheme
+import com.deepseekold.chat.ui.design.Card
+import com.deepseekold.chat.ui.design.MiuixTheme
+import com.deepseekold.chat.ui.design.Scaffold
+import com.deepseekold.chat.ui.design.SmallTitle
+import com.deepseekold.chat.ui.design.SmallTopAppBar
+import com.deepseekold.chat.ui.design.Text
+import com.deepseekold.chat.ui.design.TextButton
+import com.deepseekold.chat.ui.design.TextField
 
 private const val STREAM_THINKING_ID = -1L
 private const val STREAM_ASSISTANT_ID = -2L
