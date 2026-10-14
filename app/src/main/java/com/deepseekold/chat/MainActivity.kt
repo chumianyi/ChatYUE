@@ -36,9 +36,7 @@ import com.deepseekold.chat.backend.BackendRole
 import com.deepseekold.chat.backend.ChatRequest
 import com.deepseekold.chat.databinding.ActivityMainBinding
 import com.deepseekold.chat.remote.RemoteConfigRepository
-import com.deepseekold.chat.search.WebSearchClient
 import com.deepseekold.chat.tools.EssayActivity
-import com.deepseekold.chat.tools.ToolPrompts
 import com.deepseekold.chat.tools.TranslationActivity
 import io.noties.markwon.Markwon
 import java.util.concurrent.Executors
@@ -61,7 +59,6 @@ class MainActivity : AppCompatActivity() {
     private var pendingMessageReloadConversationId: Long? = null
     private var pendingMessageListScroll: Runnable? = null
 
-    private var webSearchEnabled = false
     private var pendingImageUri: Uri? = null
     private var pendingImageName: String? = null
     private var pendingTextName: String? = null
@@ -215,15 +212,6 @@ class MainActivity : AppCompatActivity() {
     private fun configureComposer() {
         // 思考模式固定开启，不可切换，这里只做视觉标识。
         binding.thinkingModeLabel.isSelected = true
-        updateWebSearchButton()
-        binding.webSearchButton.setOnClickListener {
-            webSearchEnabled = !webSearchEnabled
-            updateWebSearchButton()
-            CompatToast.show(
-                this,
-                if (webSearchEnabled) R.string.web_search_enabled else R.string.web_search_disabled,
-            )
-        }
         binding.attachmentRemove.setOnClickListener { clearAttachments() }
 
         binding.messageInput.doAfterTextChanged {
@@ -234,13 +222,6 @@ class MainActivity : AppCompatActivity() {
         }
         updateSendButton()
         updateContextIndicator(emptyList())
-    }
-
-    private fun updateWebSearchButton() {
-        binding.webSearchButton.isSelected = webSearchEnabled
-        binding.webSearchButton.contentDescription = getString(
-            if (webSearchEnabled) R.string.web_search_enabled else R.string.web_search_disabled,
-        )
     }
 
     private fun configureActions() {
@@ -525,35 +506,11 @@ class MainActivity : AppCompatActivity() {
         pendingMessageReloadConversationId = null
         loadMessages(conversationId)
 
-        val query = rawInput.ifEmpty { userContent }
-        if (webSearchEnabled) {
-            CompatToast.show(this, R.string.web_search_running, android.widget.Toast.LENGTH_SHORT)
-            ioExecutor.execute {
-                val results = runCatching { WebSearchClient.search(query) }
-                    .getOrDefault(emptyList())
-                val context = WebSearchClient.buildContext(query, results)
-                runOnUiThread {
-                    if (context.isEmpty()) {
-                        CompatToast.show(this, R.string.web_search_no_result)
-                    }
-                    dispatchChatRequest(conversationId, context)
-                }
-            }
-        } else {
-            dispatchChatRequest(conversationId, "")
-        }
+        dispatchChatRequest(conversationId)
     }
 
-    private fun dispatchChatRequest(conversationId: Long, searchContext: String) {
+    private fun dispatchChatRequest(conversationId: Long) {
         val messages = buildList {
-            if (searchContext.isNotBlank()) {
-                add(
-                    BackendMessage(
-                        BackendRole.SYSTEM,
-                        ToolPrompts.webSearchSystemPrompt(searchContext),
-                    ),
-                )
-            }
             repository.getMessages(conversationId).forEach { message ->
                 when (message.role) {
                     MessageRole.USER -> add(BackendMessage(BackendRole.USER, message.content))
@@ -908,7 +865,6 @@ class MainActivity : AppCompatActivity() {
     private fun updateComposer(isGenerating: Boolean) {
         binding.messageInput.isEnabled = !isGenerating
         binding.addButton.isEnabled = !isGenerating
-        binding.webSearchButton.isEnabled = !isGenerating
         binding.sendButton.setImageResource(
             if (isGenerating) R.drawable.ic_stop else R.drawable.ic_send,
         )

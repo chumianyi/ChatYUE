@@ -1,11 +1,18 @@
 {
-  "versionName": "1.1.1",
-  "versionCode": 3,
+  "versionName": "1.2.0",
+  "versionCode": 4,
   "releaseDate": "2026-10-14",
   "downloadUrl": "https://github.com/chumianyi/DeepSeekOld/releases/latest",
   "agreementUrl": "https://chumianyi.github.io/DeepSeekOld/agreement.html",
   "privacyUrl": "https://chumianyi.github.io/DeepSeekOld/privacy.html",
   "changelog": [
+    {
+      "versionName": "1.2.0",
+      "releaseDate": "2026-10-14",
+      "items": [
+        "下架联网搜索功能"
+      ]
+    },
     {
       "versionName": "1.1.1",
       "releaseDate": "2026-10-14",

@@ -97,14 +97,6 @@
     <string name="essay_generate">生成作文</string>
     <string name="essay_empty_topic">请先输入作文题目或要求</string>
 
-    <!-- 联网搜索 -->
-    <string name="web_search">联网搜索</string>
-    <string name="web_search_enabled">联网搜索已开启</string>
-    <string name="web_search_disabled">联网搜索已关闭</string>
-    <string name="web_search_running">正在联网搜索…</string>
-    <string name="web_search_failed">联网搜索失败，已直接提问</string>
-    <string name="web_search_no_result">联网搜索没有找到相关内容，已直接提问</string>
-
     <!-- 附件 -->
     <string name="attach_title">添加附件</string>
     <string name="attach_image">选择图片</string>

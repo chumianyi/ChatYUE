@@ -99,9 +99,4 @@ object ToolPrompts {
             ),
         )
 
-    // ---------------- 联网搜索（供主聊天使用） ----------------
-
-    fun webSearchSystemPrompt(context: String): String =
-        "你可以使用下列联网搜索结果来回答用户。请结合资料作答，" +
-            "并在结尾用一行列出引用来源的序号。如果资料与问题无关，请忽略资料直接回答。\n\n$context"
 }

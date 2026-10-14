@@ -258,24 +258,6 @@
                         android:text="@string/thinking_mode_label"
                         android:textColor="@color/deep_think_text"
                         android:textSize="12sp" />
-
-                    <TextView
-                        android:id="@+id/webSearchButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="30dp"
-                        android:layout_marginStart="6dp"
-                        android:background="@drawable/bg_deep_think_button"
-                        android:clickable="true"
-                        android:contentDescription="@string/web_search"
-                        android:drawableStart="@drawable/ic_search"
-                        android:drawablePadding="6dp"
-                        android:focusable="true"
-                        android:gravity="center"
-                        android:paddingStart="12dp"
-                        android:paddingEnd="12dp"
-                        android:text="@string/web_search"
-                        android:textColor="@color/deep_think_text"
-                        android:textSize="12sp" />
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>
