@@ -1,76 +1,79 @@
-# DeepSeekOld
+# DeepSeekOld / veryoldDpSk
 
-DeepSeekOld 是一个 Android 原生（Kotlin + 传统 View 体系）的 DeepSeek R1 聊天客户端，最低支持 Android 5.0（API 21）。
+同一仓库内的两个 Android 聊天客户端，共用一套固定接口与固定模型。
 
-本项目由 [DeepSeek Lite](https://github.com/benzhoupo/deepseek-lite) 改造而来，主要变化：
+| 应用 | 面向设备 | 技术栈 | 最低系统 |
+|------|----------|--------|----------|
+| **DeepSeekOld** | 主流设备 | Kotlin + Jetpack Compose（HyperOS 设计语言） | Android 5.0（API 21） |
+| **veryoldDpSk** | 超老设备 | 纯 Java，零第三方依赖 | Android 1.5（API 3） |
 
-- 接口地址、密钥、模型**全部硬编码固定**，App 内不提供查看与修改入口；
-- **只有思考模式**，不支持切换，思考过程（`reasoning_content`）与正式回答（`content`）分开展示；
-- 新增**上下文用量指示与自动压缩**；
-- 新增侧边栏四大功能：智能翻译、一起作文、海龟汤、成语接龙；
-- 支持明文 HTTP 接口（`usesCleartextTraffic` + 网络安全配置）。
+两者均由 [DeepSeek Lite](https://github.com/benzhoupo/deepseek-lite) 改造而来。
 
-## 一、固定配置
+---
 
-接口、密钥、模型统一写死在 `app/src/main/java/com/deepseekold/chat/backend/FixedEndpoint.kt`：
+## 一、固定配置（两个应用一致）
+
+接口地址、密钥、模型全部硬编码在源码里，应用内不提供任何查看与修改入口。
 
 | 项 | 值 |
 |----|----|
 | 接口 | `http://103.236.99.177:24512/deepseekold/v1/chat/completions` |
-| 模型 | `deepseek-ai/DeepSeek-R1` |
+| 模型 | `deepseek-ai/DeepSeek-R1`（不支持切换） |
 | 密钥 | 固定值，硬编码于源码，界面不展示 |
 
-App 内**没有**任何设置页、模型选择器或密钥输入框，用户打开即可直接聊天。
+打开即聊天：不需要选模型、不需要填 Key、不需要填接口地址。
 
-## 二、聊天
+## 二、共同功能
 
-- 输入消息并发送，全部请求固定走 `deepseek-ai/DeepSeek-R1`；
-- 流式输出，实时展示 `reasoning_content` 思考过程；
-- 思考结束后继续展示正式回答 `content`（Markdown 渲染）；
-- 思考内容不会作为历史消息重复发送给模型；
-- 支持停止生成、本地会话历史、搜索与清空。
+- 固定接口、固定密钥、固定模型，仅思考模式（不支持切换）；
+- 同时展示 `reasoning_content` 思考过程与 `content` 正式回答；
+- 流式输出，可中途停止；
+- 右上角显示上下文占用百分比：中文 ×1.5、其余 ×0.25，上限 128K；
+- 占用达到 **85%** 时自动调用模型，把前半段对话压缩成一条 system 摘要并替换原消息；
+- 侧边栏：智能翻译（中文 ⇄ 英 / 韩 / 日 / 俄，简体 ⇄ 繁体）、一起作文（5 种风格 + 中英双语 + 100~2000 字数）；
+- 检查更新与更新日志：读取 GitHub Pages 上的 `start.json`，不重新发版也能更新；
+- 首次启动必须同意用户协议与隐私政策，点「不同意」直接退出；
+- 附件：选择设备图片（自动提示模型仅支持识别文本）或读取 txt 文本文件；
+- 对话记录按时间分组：今天 / 昨天 / 7 天内 / 30 天内 / 更早。
 
-## 三、上下文管理
+## 三、DeepSeekOld（主应用）
 
-- 右上角实时显示上下文占用百分比；
-- 按字符估算 token：
-  - 中文（含中日韩统一表意文字与全角标点）：每字符 **1.5** token
-  - 英文及其他字符：每字符 **0.25** token
-- 上限 **128K**；
-- 达到 **85%** 时自动压缩：
-  1. 自动调用 AI，把前半段对话压缩成一条摘要；
-  2. 摘要以 **system** 消息保存并替换掉被压缩的原始消息；
-  3. 界面中会以「上下文摘要」卡片展示，并提示压缩前后的占用比例。
+- 界面由 **Jetpack Compose** 重写，按小米 **HyperOS / Miuix** 设计规范自行实现顶栏、消息卡片、胶囊按钮与侧边栏；
+- 跟随系统的深色模式；
+- 构建链路：Kotlin 2.4.20 + AGP 8.13.2 + Compose 1.9.0；
+- 源码位于仓库根目录。
 
-估算规则实现见 `ContextBudget.kt`，压缩逻辑见 `ChatViewModel.maybeCompressContext()`。
+## 四、veryoldDpSk（超老设备）
 
-## 四、侧边栏四大功能
-
-| 功能 | 说明 |
-|------|------|
-| **智能翻译** | 5 组互译：中文↔英文、中文↔韩文、中文↔日文、简体↔繁体、中文↔俄文；方向由系统提示词指定，AI 只输出译文 |
-| **一起作文** | 输入题目/要求，滑块选择 100~2000 字，AI 生成不少于所选字数、且不超过 2000 字的作文 |
-| **海龟汤** | AI 以 JSON 生成「谜面 + 谜底」，前端只展示谜面；用户提问，AI 只回答「是」「否」「提示」；3 次提示机会；猜中谜底即获胜 |
-| **成语接龙** | AI 随机出四字成语，用户接龙（首字读音与上一成语末字相同即可），AI 判定合法性并接续；接不上则游戏结束 |
+- 面向 **Android 1.5（API 3）及以上所有系统**，最低版本由 CI 强制校验，不允许被抬高；
+- **零第三方依赖**：不使用 AndroidX、不使用 Kotlin、不使用 OkHttp，全部为系统自带控件与 `java.net`；
+- 手写 SSE 流式解析与 JSON 解析，避免不同年代 ROM 上的实现差异；
+- 图标使用 PNG 位图（老系统不支持矢量图），主题基于 `@android:style/Theme.Light.NoTitleBar`；
+- 运行时权限（相册）通过反射申请 + 轮询结果，代码中不出现任何高于 API 3 的符号；
+- 源码位于 `veryoldDpSk/` 目录，构建与主应用完全隔离（JDK 11 + AGP 7.4.2 + Gradle 7.5.1）。
 
 ## 五、构建
 
-```bash
-# 编译调试包
-./gradlew assembleDebug
+两个应用都由 GitHub Actions 云端构建，推送到 `main` 即自动执行：
 
-# 运行单元测试（纯 JVM，无需设备）
-./gradlew test
-```
+| 工作流 | 产物 | 额外校验 |
+|--------|------|----------|
+| `.github/workflows/android.yml` | `DeepSeekOld-debug-apk` | 单元测试 |
+| `.github/workflows/veryold.yml` | `veryoldDpSk-debug-apk` | minSdk 必须为 3；lint 不得出现 NewApi / InlinedApi |
 
-构建产物：`app/build/outputs/apk/debug/app-debug.apk`
+## 六、网页资源（GitHub Pages）
 
-> `local.properties`（Android SDK 路径）已被忽略，导入 Android Studio 后会自动生成。
+站点部署在 `docs/` 目录：
 
-## 六、许可
+- `start.json` — 版本与更新日志数据源
+- `agreement.html` — 用户协议
+- `privacy.html` — 隐私政策
 
-Copyright (C) 2026 benzhoupo
+## 七、许可
 
-本项目基于 DeepSeek Lite 改造，沿用 **GNU General Public License v3.0**，详情请参阅 [LICENSE](LICENSE)。
+本项目使用 **GNU General Public License v3.0** 开源，详见 [LICENSE](LICENSE)。
 
-> 仓库根目录下的 `server.js` / `package.json` 为 DeepSeekOld 的 API 代理服务代码，与 Android 客户端同仓保存。
+- 原项目：[DeepSeek Lite](https://github.com/benzhoupo/deepseek-lite)
+- 项目地址：https://github.com/chumianyi/DeepSeekOld
+
+> 仓库根目录下的 `server.js` / `package.json` 为 API 代理服务代码，与两个 Android 客户端同仓保存。

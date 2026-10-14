@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+      基础主题：使用 API 1 就存在的 Theme.Light.NoTitleBar，
+      标题栏由各页面自行绘制，保证从 Android 1.5 起外观一致。
+    -->
+    <style name="AppTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">@color/ds_bg</item>
+    </style>
+
+    <!-- 顶栏标题 -->
+    <style name="BarTitle">
+        <item name="android:textColor">@color/ds_text_primary</item>
+        <item name="android:textSize">17sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:singleLine">true</item>
+        <item name="android:ellipsize">end</item>
+    </style>
+
+    <!-- 页面大标题 -->
+    <style name="PageTitle">
+        <item name="android:textColor">@color/ds_text_primary</item>
+        <item name="android:textSize">22sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- 分组小标题 -->
+    <style name="SectionTitle">
+        <item name="android:textColor">@color/ds_text_secondary</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <!-- 正文 -->
+    <style name="BodyText">
+        <item name="android:textColor">@color/ds_text_primary</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:lineSpacingExtra">4dp</item>
+    </style>
+
+    <!-- 次要说明 -->
+    <style name="Caption">
+        <item name="android:textColor">@color/ds_text_secondary</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:lineSpacingExtra">2dp</item>
+    </style>
+
+    <!-- 主要按钮（胶囊） -->
+    <style name="PrimaryButton">
+        <item name="android:background">@drawable/bg_btn_primary</item>
+        <item name="android:textColor">@color/ds_text_on_primary</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:minHeight">44dp</item>
+    </style>
+
+    <!-- 次要按钮（描边） -->
+    <style name="SecondaryButton">
+        <item name="android:background">@drawable/bg_btn_secondary</item>
+        <item name="android:textColor">@color/ds_text_primary</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:minHeight">44dp</item>
+    </style>
+
+    <!-- 输入框 -->
+    <style name="InputField">
+        <item name="android:background">@drawable/bg_input</item>
+        <item name="android:textColor">@color/ds_text_primary</item>
+        <item name="android:textColorHint">@color/ds_text_hint</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:paddingLeft">12dp</item>
+        <item name="android:paddingRight">12dp</item>
+        <item name="android:paddingTop">10dp</item>
+        <item name="android:paddingBottom">10dp</item>
+    </style>
+</resources>

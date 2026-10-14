@@ -1,4 +1,157 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
     <string name="app_name">veryoldDpSk</string>
+    <string name="app_engine">DeepSeek-R1</string>
+
+    <!-- 主界面 -->
+    <string name="welcome_title">嗨，今天要干什么呢？</string>
+    <string name="welcome_subtitle">输入消息即可开始，思考过程与正式回答会同时展示</string>
+    <string name="input_hint">发消息…</string>
+    <string name="send">发送</string>
+    <string name="stop">停止</string>
+    <string name="thinking">思考中…</string>
+    <string name="thinking_label">思考过程</string>
+    <string name="expand">展开</string>
+    <string name="collapse">收起</string>
+    <string name="delete_conversation">删除这个对话？</string>
+    <string name="thinking_mode">深度思考 · 固定开启</string>
+    <string name="context_usage">%1$d%%</string>
+    <string name="context_usage_detail">上下文 %1$d%%（%2$s / 128K）</string>
+    <string name="generating">正在生成…</string>
+    <string name="empty_input">请先输入内容</string>
+
+    <!-- 抽屉 -->
+    <string name="menu">菜单</string>
+    <string name="drawer_tools">工具</string>
+    <string name="drawer_history">对话记录</string>
+    <string name="drawer_more">更多</string>
+    <string name="tool_translate">智能翻译</string>
+    <string name="tool_essay">一起作文</string>
+    <string name="tool_update">检查更新</string>
+    <string name="tool_changelog">更新日志</string>
+    <string name="tool_about">关于</string>
+    <string name="tool_new_chat">新建对话</string>
+    <string name="tool_clear">清空当前对话</string>
+
+    <!-- 会话分组 -->
+    <string name="section_today">今天</string>
+    <string name="section_yesterday">昨天</string>
+    <string name="section_last_7_days">7 天内</string>
+    <string name="section_last_30_days">30 天内</string>
+    <string name="section_earlier">更早</string>
+    <string name="new_chat_title">新的对话</string>
+
+    <!-- 上下文压缩 -->
+    <string name="summary_label">上下文摘要</string>
+    <string name="compress_started">上下文已达 %1$d%%，正在自动压缩…</string>
+    <string name="compress_done">已自动压缩上下文</string>
+    <string name="compress_failed">自动压缩失败，继续对话：%1$s</string>
+    <string name="compress_prompt">请把下面的对话压缩成一段简洁的中文摘要，保留关键事实、结论与未完成的事项，去掉寒暄。只输出摘要正文。\n\n%1$s</string>
+
+    <!-- 翻译 -->
+    <string name="translate_title">智能翻译</string>
+    <string name="translate_pair">语言方向</string>
+    <string name="translate_swap">交换方向</string>
+    <string name="translate_source_hint">输入要翻译的内容</string>
+    <string name="translate_action">开始翻译</string>
+    <string name="translate_result">译文</string>
+    <string name="pair_zh_en">中文 ⇄ 英文</string>
+    <string name="pair_zh_ko">中文 ⇄ 韩文</string>
+    <string name="pair_zh_ja">中文 ⇄ 日文</string>
+    <string name="pair_zh_tw">简体 ⇄ 繁体</string>
+    <string name="pair_zh_ru">中文 ⇄ 俄文</string>
+    <string name="lang_zh">中文</string>
+    <string name="lang_en">英文</string>
+    <string name="lang_ko">韩文</string>
+    <string name="lang_ja">日文</string>
+    <string name="lang_tw">繁体中文</string>
+    <string name="lang_ru">俄文</string>
+
+    <!-- 作文 -->
+    <string name="essay_title">一起作文</string>
+    <string name="essay_topic">作文题目或要求</string>
+    <string name="essay_topic_hint">例如：我的家乡</string>
+    <string name="essay_style">风格</string>
+    <string name="essay_language">语言</string>
+    <string name="essay_words">字数</string>
+    <string name="essay_action">开始写作</string>
+    <string name="essay_result">正文</string>
+    <string name="essay_count">实际字数：%1$d 字</string>
+    <string name="essay_empty_topic">请先输入作文题目或要求</string>
+    <string name="style_prose">散文</string>
+    <string name="style_narrative">记叙文</string>
+    <string name="style_novel">小说</string>
+    <string name="style_argumentative">议论文</string>
+    <string name="style_expository">说明文</string>
+
+    <!-- 附件 -->
+    <string name="attach">添加附件</string>
+    <string name="attach_image">选择图片</string>
+    <string name="attach_text">选择文本文件（txt）</string>
+    <string name="attach_remove">移除附件</string>
+    <string name="attach_image_label">图片附件</string>
+    <string name="attach_text_label">文本附件</string>
+    <string name="image_text_only">本模型仅支持识别文本，图片将作为附件发送</string>
+    <string name="pick_image_title">选择图片</string>
+    <string name="pick_image_empty">相册中没有找到任何图片</string>
+    <string name="permission_denied">未获得相册权限，无法查看设备中的图片</string>
+    <string name="permission_grant">授予相册权限</string>
+    <string name="file_picker_title">选择 txt 文件</string>
+    <string name="file_picker_empty">未找到任何 txt 文件</string>
+    <string name="file_reading">正在读取文件…</string>
+    <string name="file_read_failed">文件读取失败</string>
+    <string name="file_too_large">文件过大，仅支持 200KB 以内的 txt</string>
+
+    <!-- 协议 -->
+    <string name="agreement_title">用户协议与隐私政策</string>
+    <string name="agreement_notice">请阅读并同意以下条款后继续使用本应用。</string>
+    <string name="agreement_accept">同意并继续</string>
+    <string name="agreement_decline">不同意</string>
+    <string name="agreement_declined">需要同意用户协议与隐私政策才能使用本应用</string>
+    <string name="agreement_loading">正在加载在线条款…</string>
+    <string name="agreement_offline">当前无法加载在线条款，以下为内置版本。</string>
+    <string name="agreement_in_browser">在浏览器中查看</string>
+
+    <!-- 更新 -->
+    <string name="update_title">检查更新</string>
+    <string name="update_checking">正在检查更新…</string>
+    <string name="update_found">发现新版本 %1$s\n当前版本 %2$s。\n\n是否前往下载？</string>
+    <string name="update_latest">当前已是最新版本（%1$s）</string>
+    <string name="update_failed">检查更新失败：%1$s</string>
+    <string name="update_now">前往下载</string>
+    <string name="update_later">稍后再说</string>
+    <string name="changelog_title">更新日志</string>
+    <string name="changelog_empty">暂无更新日志</string>
+    <string name="changelog_loading">正在加载…</string>
+    <string name="changelog_failed">加载失败：%1$s</string>
+
+    <!-- 关于 -->
+    <string name="about_title">关于</string>
+    <string name="about_body">veryoldDpSk 是一个面向超老设备的聊天客户端，从 Android 1.5（API 3）起即可安装运行，界面与 DeepSeekOld 保持一致。
+
+模型固定为 deepseek-ai/DeepSeek-R1，仅思考模式，同时展示思考过程与正式回答，支持流式输出与上下文自动压缩。接口与密钥固定在应用内，不提供查看与修改入口。
+
+本应用不引入任何第三方依赖，全部使用系统自带控件，因此体积小、启动快，也不会出现因库版本不匹配导致的闪退。
+
+开源协议：GNU General Public License v3.0
+原项目：DeepSeek Lite
+项目地址：https://github.com/chumianyi/DeepSeekOld</string>
+    <string name="about_original">原项目 DeepSeek Lite</string>
+    <string name="about_project">项目地址</string>
+    <string name="about_license">GPLv3 开源协议</string>
+    <string name="about_agreement">用户协议</string>
+    <string name="about_privacy">隐私政策</string>
+
+    <!-- 通用 -->
+    <string name="back">返回</string>
+    <string name="retry">重试</string>
+    <string name="cancel">取消</string>
+    <string name="confirm">确定</string>
+    <string name="copy">复制</string>
+    <string name="copied">已复制</string>
+    <string name="close">关闭</string>
+    <string name="clear_success">已清空</string>
+    <string name="deleted">已删除</string>
+    <string name="loading">加载中…</string>
 </resources>

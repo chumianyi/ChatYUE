@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- HyperOS 风格配色 -->
+    <color name="ds_blue">#3482FF</color>
+    <color name="ds_blue_dark">#2A6BE0</color>
+    <color name="ds_blue_soft">#E8F0FF</color>
+
+    <color name="ds_bg">#F2F3F5</color>
+    <color name="ds_surface">#FFFFFF</color>
+    <color name="ds_surface_soft">#F7F8FA</color>
+    <color name="ds_divider">#E4E6EB</color>
+
+    <color name="ds_text_primary">#181B20</color>
+    <color name="ds_text_secondary">#6B7280</color>
+    <color name="ds_text_hint">#9AA0A8</color>
+    <color name="ds_text_on_primary">#FFFFFF</color>
+
+    <color name="ds_think_bg">#FFF8E6</color>
+    <color name="ds_think_border">#F2E2B8</color>
+    <color name="ds_summary_bg">#EEF4FF</color>
+    <color name="ds_summary_border">#CBDCFB</color>
+
+    <color name="ds_scrim">#66000000</color>
+    <color name="ds_warning">#D9534F</color>
+    <color name="ds_disabled">#C3C7CE</color>
+    <color name="transparent">#00000000</color>
+</resources>
