@@ -58,8 +58,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.foundation)
-    implementation(libs.miuix.ui)
-    implementation(libs.miuix.icons)
+    implementation(libs.miuix)
 
     testImplementation(libs.junit)
     testImplementation(libs.mockwebserver)
