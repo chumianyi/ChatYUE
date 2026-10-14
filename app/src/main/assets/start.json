@@ -1,11 +1,22 @@
 {
-  "versionName": "1.2.0",
-  "versionCode": 4,
+  "versionName": "1.3.0",
+  "versionCode": 5,
   "releaseDate": "2026-10-14",
   "downloadUrl": "https://github.com/chumianyi/DeepSeekOld/releases/latest",
   "agreementUrl": "https://chumianyi.github.io/DeepSeekOld/agreement.html",
   "privacyUrl": "https://chumianyi.github.io/DeepSeekOld/privacy.html",
   "changelog": [
+    {
+      "versionName": "1.3.0",
+      "releaseDate": "2026-10-14",
+      "items": [
+        "界面全量改用 Jetpack Compose 重写，并接入 Miuix 组件库（小米 HyperOS 设计语言，Apache-2.0）",
+        "新增跟随系统的深色模式",
+        "顶栏、消息卡片、输入区、侧边栏按 HyperOS 规范重做",
+        "构建链路升级：Kotlin 2.4.20 + AGP 8.13.2 + Compose 1.12",
+        "下架联网搜索功能"
+      ]
+    },
     {
       "versionName": "1.2.0",
       "releaseDate": "2026-10-14",
