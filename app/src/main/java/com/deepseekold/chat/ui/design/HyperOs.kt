@@ -162,7 +162,7 @@ fun Text(
             color = if (color == Color.Unspecified) MiuixTheme.colorScheme.onSurface else color,
             fontSize = if (fontSize == TextUnit.Unspecified) 15.sp else fontSize,
             fontWeight = fontWeight,
-            textAlign = textAlign,
+            textAlign = textAlign ?: TextAlign.Unspecified,
             lineHeight = if (lineHeight == TextUnit.Unspecified) TextUnit.Unspecified else lineHeight,
         ),
         maxLines = maxLines,

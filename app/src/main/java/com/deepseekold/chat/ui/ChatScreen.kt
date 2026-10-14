@@ -171,6 +171,9 @@ fun ChatScreen(
                 viewModel.acknowledgeTerminal(state.eventId)
             }
 
+            // 流式过程中不需要额外副作用，界面直接读取 state 渲染
+            is GenerationState.Active -> Unit
+
             GenerationState.Idle -> Unit
         }
     }
