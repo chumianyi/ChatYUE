@@ -10,7 +10,9 @@ android {
 
     defaultConfig {
         applicationId = "com.deepseekold.chat"
-        minSdk = 21
+        // Miuix 组件库最低要求 API 23（Android 6.0）；
+        // Android 1.5~5.1 由同仓库的 veryoldDpSk 覆盖。
+        minSdk = 23
         targetSdk = 36
         versionCode = 5
         versionName = "1.3.0"
