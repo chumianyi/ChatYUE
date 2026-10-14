@@ -1,7 +1,8 @@
 [versions]
 agp = "8.13.2"
 kotlin = "2.4.20"
-composeUi = "1.12.1"
+# Compose 1.12+ 要求 compileSdk 37；1.11.x 只要求 35，与 compileSdk 36 兼容
+composeUi = "1.11.0"
 activityCompose = "1.13.0"
 miuix = "0.8.8"
 coreKtx = "1.10.1"
