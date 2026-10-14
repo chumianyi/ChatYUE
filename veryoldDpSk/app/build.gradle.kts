@@ -35,45 +35,48 @@ android {
     }
 
     lint {
+        // 注意 AGP 7.4 的 Lint DSL 属性名是 abortOnError（AGP 8 才改名 isAbortOnError）。
         // 非致命告警不阻断构建；NewApi 由 CI 的独立步骤严格把关。
-        isAbortOnError = false
+        abortOnError = false
         checkReleaseBuilds = false
         htmlReport = true
         xmlReport = true
-        disable += setOf(
-            "MinSdkTooLow",
-            "OldTargetApi",
-            "ExpiredTargetSdkVersion",
-            // manifest 里个别属性（如 allowBackup）在 API 3 上不存在，系统会直接忽略
-            "UnusedAttribute",
-            "GoogleAppIndexingWarning",
-            "MissingApplicationIcon",
-            "IconDensities",
-            "IconMissingDensityFolder",
-            "IconLauncherShape",
-            "AllowBackup",
-            "UnusedResources",
-            "HardcodedText",
-            "ContentDescription",
-            "ClickableViewAccessibility",
-            "LabelFor",
-            "Autofill",
-            "Deprecated",
-            "BatteryLife",
-            "LogConditional",
-            "SetTextI18n",
-            "RtlSymmetry",
-            "RtlHardcoded",
-            "SmallSp",
-            "TypographyQuotes",
-            "Overdraw",
-            "UselessParent",
-            "NestedWeights",
-            "TextFields",
-            "DuplicateIds",
-            "GradleDependency",
-            "OldGradleApi",
-            "NewerVersionAvailable",
+        disable.addAll(
+            listOf(
+                "MinSdkTooLow",
+                "OldTargetApi",
+                "ExpiredTargetSdkVersion",
+                // manifest 里个别属性（如 allowBackup）在 API 3 上不存在，系统会直接忽略
+                "UnusedAttribute",
+                "GoogleAppIndexingWarning",
+                "MissingApplicationIcon",
+                "IconDensities",
+                "IconMissingDensityFolder",
+                "IconLauncherShape",
+                "AllowBackup",
+                "UnusedResources",
+                "HardcodedText",
+                "ContentDescription",
+                "ClickableViewAccessibility",
+                "LabelFor",
+                "Autofill",
+                "Deprecated",
+                "BatteryLife",
+                "LogConditional",
+                "SetTextI18n",
+                "RtlSymmetry",
+                "RtlHardcoded",
+                "SmallSp",
+                "TypographyQuotes",
+                "Overdraw",
+                "UselessParent",
+                "NestedWeights",
+                "TextFields",
+                "DuplicateIds",
+                "GradleDependency",
+                "OldGradleApi",
+                "NewerVersionAvailable",
+            ),
         )
     }
 }
