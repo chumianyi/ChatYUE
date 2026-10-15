@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    name: Build debug APK
+    name: Build release APK
     runs-on: ubuntu-latest
 
     steps:
@@ -40,14 +40,32 @@ jobs:
       - name: Run unit tests
         run: ./gradlew test --no-daemon --stacktrace
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+      # 正式版：使用仓库内固定的 keystore 签名（keystore.properties）
+      - name: Build release APK
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Verify signature
+        run: |
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          echo "APK: $APK"
+          "$ANDROID_HOME/build-tools/36.1.0/apksigner" verify --print-certs "$APK"
+          "$ANDROID_HOME/build-tools/36.1.0/aapt" dump badging "$APK" | grep -E "^package|^application-label:"
+
+      - name: Collect APK
+        run: |
+          VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          cd app/build/outputs/apk/release
+          for f in *.apk; do
+            case "$f" in ChatYUE-*) continue;; esac
+            mv "$f" "ChatYUE-${VERSION}-release.apk"
+          done
+          ls -l
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ChatYUE-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: ChatYUE-release-apk
+          path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
       - name: Upload unit test report

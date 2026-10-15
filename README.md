@@ -316,3 +316,22 @@ Made with ❤️ for old devices
 
 </sub>
 </div>
+
+## 正式版与签名
+
+从 v1.4.1 起，云端构建产出的是 **release 正式版**（`assembleRelease`），不再提供 debug 包。
+
+- 签名使用仓库内固定的 keystore：`keystore/chatyue-release.jks`，配置见 `keystore.properties`
+- 本地与云端 CI 共用同一份签名，因此每次产出的 APK 都能互相覆盖安装
+- 正式版 `android:debuggable=false`，体积与运行效率均优于 debug 包
+- 未开启代码混淆与资源压缩（`optimization.enable = false`），避免运行期异常
+
+证书指纹（SHA-1）：`1C:9F:56:BE:79:11:80:F5:79:CC:6D:3B:46:45:B2:07:9E:D1:57:62`
+
+> 由于本仓库公开，keystore 与口令同样是公开的。如果担心他人冒名签发同包名应用，
+> 请替换为自己的私有 keystore，并把 `keystore.properties` 从仓库中移除、
+> 改用 CI Secrets 注入。
+>
+> 从旧版 debug 包升级到正式版需要先卸载旧版（两者签名不同，无法直接覆盖）。
+
+产物：`app/build/outputs/apk/release/ChatYUE-<版本号>-release.apk`
