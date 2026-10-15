@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">DeepSeekOld</string>
+    <string name="app_name">ChatYUE</string>
 
     <!-- 主界面 -->
     <string name="new_chat">新对话</string>
@@ -12,7 +12,7 @@
     <string name="stop_generation">停止生成</string>
     <string name="add_attachment">添加附件</string>
     <string name="search_conversations">搜索对话内容…</string>
-    <string name="account_name">DeepSeekOld</string>
+    <string name="account_name">ChatYUE</string>
     <string name="more_options">更多选项</string>
     <string name="navigate_back">返回</string>
 
@@ -43,7 +43,7 @@
     <string name="about_origin_url">https://github.com/benzhoupo/deepseek-lite</string>
     <string name="about_origin_desc">本项目由 DeepSeek Lite 改造而来，原作者与原始代码版权归 benzhoupo 所有。</string>
     <string name="about_project_title">本项目地址</string>
-    <string name="about_project_url">https://github.com/chumianyi/DeepSeekOld</string>
+    <string name="about_project_url">https://github.com/chumianyi/ChatYUE</string>
     <string name="about_project_desc">点击可在浏览器中打开项目主页，构建与打包由 GitHub Actions 云端完成。</string>
     <string name="about_license_title">开源许可</string>
     <string name="about_license_value">GNU General Public License v3.0</string>
@@ -51,6 +51,16 @@
     <string name="about_license_url">https://www.gnu.org/licenses/gpl-3.0.html</string>
     <string name="about_fixed_title">内置固定配置</string>
     <string name="about_fixed_desc">接口地址、模型与密钥均已固定内置，App 内不提供查看与修改入口；仅支持思考模式，不支持切换。</string>
+    <string name="about_licenses">许可证</string>
+
+    <!-- 开源许可证 -->
+    <string name="licenses_title">开源许可证</string>
+    <string name="licenses_intro">ChatYUE 使用以下开源组件，在此向所有作者与贡献者致谢。</string>
+    <string name="licenses_self_suffix">本项目</string>
+    <string name="licenses_detail_title">%1$s 的许可证</string>
+    <string name="licenses_read_failed">许可证文本读取失败</string>
+    <string name="licenses_open_official">在浏览器中打开官方页面</string>
+    <string name="licenses_shared_notice">以上组件均以宽松开源许可（Apache-2.0）发布，可自由使用与再分发；其传递依赖使用相同或兼容的开源许可。</string>
 
     <!-- 通用 -->
     <string name="paste">粘贴</string>

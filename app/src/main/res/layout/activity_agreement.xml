@@ -12,7 +12,7 @@
         android:layout_height="56dp">
 
         <TextView
-            style="@style/Widget.DeepSeekOld.ToolHeaderTitle"
+            style="@style/Widget.ChatYUE.ToolHeaderTitle"
             android:text="@string/agreement_title" />
     </FrameLayout>
 
@@ -58,7 +58,7 @@
 
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/declineButton"
-            style="@style/Widget.DeepSeekOld.SecondaryButton"
+            style="@style/Widget.ChatYUE.SecondaryButton"
             android:layout_width="0dp"
             android:layout_height="46dp"
             android:layout_weight="1"
@@ -66,7 +66,7 @@
 
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/acceptButton"
-            style="@style/Widget.DeepSeekOld.PrimaryButton"
+            style="@style/Widget.ChatYUE.PrimaryButton"
             android:layout_width="0dp"
             android:layout_height="46dp"
             android:layout_marginStart="10dp"

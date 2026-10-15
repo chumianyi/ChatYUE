@@ -27,12 +27,12 @@ public final class App {
     public static final String VERSION_NAME = "1.0.0";
 
     /** GitHub Pages 站点，承载更新日志、用户协议与隐私政策。 */
-    public static final String PAGES_BASE = "https://chumianyi.github.io/DeepSeekOld/";
+    public static final String PAGES_BASE = "https://chumianyi.github.io/ChatYUE/";
     public static final String START_JSON_URL = PAGES_BASE + "start.json";
     public static final String AGREEMENT_URL = PAGES_BASE + "agreement.html";
     public static final String PRIVACY_URL = PAGES_BASE + "privacy.html";
 
-    public static final String PROJECT_URL = "https://github.com/chumianyi/DeepSeekOld";
+    public static final String PROJECT_URL = "https://github.com/chumianyi/ChatYUE";
     public static final String ORIGINAL_URL = "https://github.com/benzhoupo/deepseek-lite";
     public static final String LICENSE_URL = "https://www.gnu.org/licenses/gpl-3.0.html";
 

@@ -22,7 +22,7 @@
             android:src="@drawable/ic_back" />
 
         <TextView
-            style="@style/Widget.DeepSeekOld.ToolHeaderTitle"
+            style="@style/Widget.ChatYUE.ToolHeaderTitle"
             android:text="@string/translate_title" />
     </FrameLayout>
 
@@ -77,7 +77,7 @@
 
         <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/swapButton"
-            style="@style/Widget.DeepSeekOld.SecondaryButton"
+            style="@style/Widget.ChatYUE.SecondaryButton"
             android:layout_width="wrap_content"
             android:layout_height="40dp"
             android:layout_marginStart="8dp"
@@ -86,7 +86,7 @@
             android:text="@string/translate_swap" />
     </LinearLayout>
 
-    <com.deepseekold.chat.CompatPasteEditText
+    <com.chatyue.chat.CompatPasteEditText
         android:id="@+id/sourceInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -105,7 +105,7 @@
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/translateButton"
-        style="@style/Widget.DeepSeekOld.PrimaryButton"
+        style="@style/Widget.ChatYUE.PrimaryButton"
         android:layout_width="match_parent"
         android:layout_height="46dp"
         android:layout_marginStart="16dp"

@@ -24,10 +24,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:contentDescription="@null"
-                android:src="@drawable/ic_deepseek_logo" />
+                android:src="@drawable/ic_chatyue_logo" />
         </FrameLayout>
 
-        <com.deepseekold.chat.CompatSelectableTextView
+        <com.chatyue.chat.CompatSelectableTextView
             android:id="@+id/thinkingTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

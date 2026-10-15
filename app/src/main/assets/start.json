@@ -1,11 +1,21 @@
 {
-  "versionName": "1.3.0",
-  "versionCode": 5,
-  "releaseDate": "2026-10-14",
-  "downloadUrl": "https://github.com/chumianyi/DeepSeekOld/releases/latest",
-  "agreementUrl": "https://chumianyi.github.io/DeepSeekOld/agreement.html",
-  "privacyUrl": "https://chumianyi.github.io/DeepSeekOld/privacy.html",
+  "versionName": "1.4.0",
+  "versionCode": 6,
+  "releaseDate": "2026-10-15",
+  "downloadUrl": "https://github.com/chumianyi/ChatYUE/releases/latest",
+  "agreementUrl": "https://chumianyi.github.io/ChatYUE/agreement.html",
+  "privacyUrl": "https://chumianyi.github.io/ChatYUE/privacy.html",
   "changelog": [
+    {
+      "versionName": "1.4.0",
+      "releaseDate": "2026-10-15",
+      "items": [
+        "应用更名为 ChatYUE：应用名、包名、主题、存储与工程名全部同步更新",
+        "全新应用图标：替换掉原有的全部 DeepSeek 鲸鱼图形，含自适应图标与 Android 13 主题图标",
+        "关于页面最下方新增「许可证」按钮，可查看本项目与全部第三方开源组件的完整许可证全文",
+        "用户协议、隐私政策与更新日志迁移至新站点地址"
+      ]
+    },
     {
       "versionName": "1.3.0",
       "releaseDate": "2026-10-14",

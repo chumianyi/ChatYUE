@@ -22,7 +22,7 @@
             android:src="@drawable/ic_back" />
 
         <TextView
-            style="@style/Widget.DeepSeekOld.ToolHeaderTitle"
+            style="@style/Widget.ChatYUE.ToolHeaderTitle"
             android:text="@string/essay_title" />
     </FrameLayout>
 
@@ -31,7 +31,7 @@
         android:layout_height="1dp"
         android:background="@color/ds_divider" />
 
-    <com.deepseekold.chat.CompatPasteEditText
+    <com.chatyue.chat.CompatPasteEditText
         android:id="@+id/topicInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -108,7 +108,7 @@
         android:paddingTop="14dp"
         android:paddingEnd="16dp">
 
-        <com.deepseekold.chat.CompatSelectableTextView
+        <com.chatyue.chat.CompatSelectableTextView
             android:id="@+id/wordCountLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -130,7 +130,7 @@
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/generateButton"
-        style="@style/Widget.DeepSeekOld.PrimaryButton"
+        style="@style/Widget.ChatYUE.PrimaryButton"
         android:layout_width="match_parent"
         android:layout_height="46dp"
         android:layout_marginStart="16dp"
@@ -138,7 +138,7 @@
         android:layout_marginEnd="16dp"
         android:text="@string/essay_generate" />
 
-    <com.deepseekold.chat.CompatSelectableTextView
+    <com.chatyue.chat.CompatSelectableTextView
         android:id="@+id/resultCountLabel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

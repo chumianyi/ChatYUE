@@ -128,7 +128,7 @@
 
     <!-- 关于 -->
     <string name="about_title">关于</string>
-    <string name="about_body">veryoldDpSk 是一个面向超老设备的聊天客户端，从 Android 1.5（API 3）起即可安装运行，界面与 DeepSeekOld 保持一致。
+    <string name="about_body">veryoldDpSk 是一个面向超老设备的聊天客户端，从 Android 1.5（API 3）起即可安装运行，界面与 ChatYUE 保持一致。
 
 模型固定为 deepseek-ai/DeepSeek-R1，仅思考模式，同时展示思考过程与正式回答，支持流式输出与上下文自动压缩。接口与密钥固定在应用内，不提供查看与修改入口。
 
@@ -136,7 +136,7 @@
 
 开源协议：GNU General Public License v3.0
 原项目：DeepSeek Lite
-项目地址：https://github.com/chumianyi/DeepSeekOld</string>
+项目地址：https://github.com/chumianyi/ChatYUE</string>
     <string name="about_original">原项目 DeepSeek Lite</string>
     <string name="about_project">项目地址</string>
     <string name="about_license">GPLv3 开源协议</string>

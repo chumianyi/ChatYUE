@@ -1,10 +1,10 @@
-# DeepSeekOld / veryoldDpSk
+# ChatYUE / veryoldDpSk
 
 同一仓库内的两个 Android 聊天客户端，共用一套固定接口与固定模型。
 
 | 应用 | 面向设备 | 技术栈 | 最低系统 |
 |------|----------|--------|----------|
-| **DeepSeekOld** | 主流设备 | Kotlin + Jetpack Compose（HyperOS 设计语言） | Android 5.0（API 21） |
+| **ChatYUE** | 主流设备 | Kotlin + Jetpack Compose（HyperOS 设计语言） | Android 5.0（API 21） |
 | **veryoldDpSk** | 超老设备 | 纯 Java，零第三方依赖 | Android 1.5（API 3） |
 
 两者均由 [DeepSeek Lite](https://github.com/benzhoupo/deepseek-lite) 改造而来。
@@ -34,12 +34,14 @@
 - 检查更新与更新日志：读取 GitHub Pages 上的 `start.json`，不重新发版也能更新；
 - 首次启动必须同意用户协议与隐私政策，点「不同意」直接退出；
 - 附件：选择设备图片（自动提示模型仅支持识别文本）或读取 txt 文本文件；
-- 对话记录按时间分组：今天 / 昨天 / 7 天内 / 30 天内 / 更早。
+- 对话记录按时间分组：今天 / 昨天 / 7 天内 / 30 天内 / 更早；
+- 关于页面最下方提供「许可证」入口，可查看本项目与全部第三方开源组件的完整许可证文本。
 
-## 三、DeepSeekOld（主应用）
+## 三、ChatYUE（主应用）
 
 - 界面由 **Jetpack Compose** 重写，按小米 **HyperOS / Miuix** 设计规范自行实现顶栏、消息卡片、胶囊按钮与侧边栏；
 - 跟随系统的深色模式；
+- 应用图标为蓝色渐变气泡球：包含 5 档密度的传统图标、Android 8.0+ 自适应图标与 Android 13+ 主题图标；
 - 构建链路：Kotlin 2.4.20 + AGP 8.13.2 + Compose 1.9.0；
 - 源码位于仓库根目录。
 
@@ -58,7 +60,7 @@
 
 | 工作流 | 产物 | 额外校验 |
 |--------|------|----------|
-| `.github/workflows/android.yml` | `DeepSeekOld-debug-apk` | 单元测试 |
+| `.github/workflows/android.yml` | `ChatYUE-debug-apk` | 单元测试 |
 | `.github/workflows/veryold.yml` | `veryoldDpSk-debug-apk` | minSdk 必须为 3；lint 不得出现 NewApi / InlinedApi |
 
 ## 六、网页资源（GitHub Pages）
@@ -74,6 +76,6 @@
 本项目使用 **GNU General Public License v3.0** 开源，详见 [LICENSE](LICENSE)。
 
 - 原项目：[DeepSeek Lite](https://github.com/benzhoupo/deepseek-lite)
-- 项目地址：https://github.com/chumianyi/DeepSeekOld
+- 项目地址：https://github.com/chumianyi/ChatYUE
 
 > 仓库根目录下的 `server.js` / `package.json` 为 API 代理服务代码，与两个 Android 客户端同仓保存。

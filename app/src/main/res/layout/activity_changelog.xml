@@ -22,7 +22,7 @@
             android:src="@drawable/ic_back" />
 
         <TextView
-            style="@style/Widget.DeepSeekOld.ToolHeaderTitle"
+            style="@style/Widget.ChatYUE.ToolHeaderTitle"
             android:text="@string/changelog_title" />
     </FrameLayout>
 

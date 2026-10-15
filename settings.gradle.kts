@@ -22,6 +22,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "DeepSeekOld"
+rootProject.name = "ChatYUE"
 include(":app")
  

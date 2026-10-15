@@ -27,7 +27,7 @@
                 android:src="@drawable/ic_back" />
 
             <TextView
-                style="@style/Widget.DeepSeekOld.ToolHeaderTitle"
+                style="@style/Widget.ChatYUE.ToolHeaderTitle"
                 android:text="@string/about_title" />
         </FrameLayout>
 
@@ -54,7 +54,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:contentDescription="@null"
-                    android:src="@drawable/ic_deepseek_logo" />
+                    android:src="@drawable/ic_chatyue_logo" />
             </FrameLayout>
 
             <TextView
@@ -219,7 +219,7 @@
 
             <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/agreementButton"
-                style="@style/Widget.DeepSeekOld.SecondaryButton"
+                style="@style/Widget.ChatYUE.SecondaryButton"
                 android:layout_width="0dp"
                 android:layout_height="44dp"
                 android:layout_weight="1"
@@ -227,7 +227,7 @@
 
             <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/privacyButton"
-                style="@style/Widget.DeepSeekOld.SecondaryButton"
+                style="@style/Widget.ChatYUE.SecondaryButton"
                 android:layout_width="0dp"
                 android:layout_height="44dp"
                 android:layout_marginStart="8dp"
@@ -241,7 +241,7 @@
             android:layout_marginStart="16dp"
             android:layout_marginTop="10dp"
             android:layout_marginEnd="16dp"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="10dp"
             android:background="@drawable/bg_card"
             android:orientation="vertical"
             android:padding="14dp">
@@ -262,5 +262,17 @@
                 android:textColor="@color/ds_text_secondary"
                 android:textSize="13sp" />
         </LinearLayout>
+
+        <!-- 最下方：查看所有开源组件的许可证 -->
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/licensesButton"
+            style="@style/Widget.ChatYUE.SecondaryButton"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="24dp"
+            android:text="@string/about_licenses" />
     </LinearLayout>
 </ScrollView>

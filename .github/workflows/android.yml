@@ -46,7 +46,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: DeepSeekOld-debug-apk
+          name: ChatYUE-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
@@ -54,6 +54,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: DeepSeekOld-unit-test-report
+          name: ChatYUE-unit-test-report
           path: app/build/reports/tests/test
           if-no-files-found: ignore

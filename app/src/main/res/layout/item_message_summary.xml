@@ -20,7 +20,7 @@
         android:textSize="12sp"
         android:textStyle="bold" />
 
-    <com.deepseekold.chat.CompatSelectableTextView
+    <com.chatyue.chat.CompatSelectableTextView
         android:id="@+id/summaryText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

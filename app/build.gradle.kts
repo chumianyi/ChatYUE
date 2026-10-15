@@ -5,15 +5,15 @@ plugins {
 }
 
 android {
-    namespace = "com.deepseekold.chat"
+    namespace = "com.chatyue.chat"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.deepseekold.chat"
+        applicationId = "com.chatyue.chat"
         minSdk = 21
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.3.0"
+        versionCode = 6
+        versionName = "1.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

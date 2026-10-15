@@ -7,7 +7,7 @@
     android:paddingTop="6dp"
     android:paddingBottom="6dp">
 
-    <com.deepseekold.chat.CompatSelectableTextView
+    <com.chatyue.chat.CompatSelectableTextView
         android:id="@+id/messageText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

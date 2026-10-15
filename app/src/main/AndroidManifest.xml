@@ -14,12 +14,12 @@
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_deepseek_launcher"
+        android:icon="@mipmap/ic_chatyue_launcher"
         android:label="@string/app_name"
         android:networkSecurityConfig="@xml/network_security_config"
-        android:roundIcon="@mipmap/ic_deepseek_launcher"
+        android:roundIcon="@mipmap/ic_chatyue_launcher"
         android:supportsRtl="true"
-        android:theme="@style/Theme.DeepSeekOld"
+        android:theme="@style/Theme.ChatYUE"
         android:usesCleartextTraffic="true"
         tools:targetApi="24">
 
@@ -37,33 +37,43 @@
         <activity
             android:name=".AgreementActivity"
             android:exported="false"
-            android:theme="@style/Theme.DeepSeekOld.Tool" />
+            android:theme="@style/Theme.ChatYUE.Tool" />
 
         <activity
             android:name=".ChangelogActivity"
             android:exported="false"
-            android:theme="@style/Theme.DeepSeekOld.Tool" />
+            android:theme="@style/Theme.ChatYUE.Tool" />
 
         <activity
             android:name=".attachment.ImageGalleryActivity"
             android:exported="false"
-            android:theme="@style/Theme.DeepSeekOld.Tool" />
+            android:theme="@style/Theme.ChatYUE.Tool" />
 
         <activity
             android:name=".AboutActivity"
             android:exported="false"
-            android:theme="@style/Theme.DeepSeekOld.Tool" />
+            android:theme="@style/Theme.ChatYUE.Tool" />
+
+        <activity
+            android:name=".license.LicenseActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ChatYUE.Tool" />
+
+        <activity
+            android:name=".license.LicenseDetailActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ChatYUE.Tool" />
 
         <activity
             android:name=".tools.TranslationActivity"
             android:exported="false"
-            android:theme="@style/Theme.DeepSeekOld.Tool"
+            android:theme="@style/Theme.ChatYUE.Tool"
             android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".tools.EssayActivity"
             android:exported="false"
-            android:theme="@style/Theme.DeepSeekOld.Tool"
+            android:theme="@style/Theme.ChatYUE.Tool"
             android:windowSoftInputMode="adjustResize" />
 
 
