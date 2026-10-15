@@ -21,6 +21,8 @@ class ChangelogActivity : AppCompatActivity() {
         binding = ActivityChangelogBinding.inflate(layoutInflater)
         setContentView(binding.root)
         binding.backButton.setOnClickListener { finish() }
+        // 拉取期间先给个提示，避免出现空白页
+        binding.changelogText.setText(R.string.changelog_loading)
 
         val markwon = Markwon.create(this)
         executor.execute {

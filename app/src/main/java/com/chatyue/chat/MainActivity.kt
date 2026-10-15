@@ -761,7 +761,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkUpdate() {
-        CompatToast.show(this, R.string.changelog_loading)
+        CompatToast.show(this, R.string.update_checking)
         ioExecutor.execute {
             val result = runCatching { RemoteConfigRepository.load(this) }
             runOnUiThread {
