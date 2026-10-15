@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  自适应图标（Android 8.0+ 使用；Android 5.0~7.1 回落到 mipmap-*/ic_chatyue_launcher.png）。
+  源图为 400×400 的圆角方形图标，这里拆成三层：
+    · background 深蓝渐变底（已抹掉球体与圆角外的白边，铺满 108dp）
+    · foreground 居中的气泡球体（放在 72dp 安全区内）
+    · monochrome 同形状的单色剪影，供「镂空图标 / 主题图标」使用
+
+  monochrome 自 Android 13 起被系统识别：开启主题图标后图标会跟随壁纸配色，
+  显示为无背景的镂空剪影。Android 8~12 的系统会忽略这个未知子元素，
+  但部分第三方桌面支持读取它来显示单色图标。
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@mipmap/ic_chatyue_launcher_background" />
+    <foreground android:drawable="@drawable/ic_chatyue_launcher_foreground" />
+    <monochrome android:drawable="@drawable/ic_chatyue_launcher_monochrome" />
+</adaptive-icon>

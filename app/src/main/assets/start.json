@@ -1,11 +1,21 @@
 {
-  "versionName": "1.4.1",
-  "versionCode": 9,
+  "versionName": "1.4.2",
+  "versionCode": 10,
   "releaseDate": "2026-10-15",
   "downloadUrl": "https://github.com/chumianyi/ChatYUE/releases/latest",
   "agreementUrl": "https://chumianyi.github.io/ChatYUE/agreement.html",
   "privacyUrl": "https://chumianyi.github.io/ChatYUE/privacy.html",
   "changelog": [
+    {
+      "versionName": "1.4.2",
+      "releaseDate": "2026-10-15",
+      "items": [
+        "新增镂空图标（monochrome 主题层）：开启主题图标后，图标会跟随壁纸配色显示为无背景的单色剪影",
+        "图标改为三层自适应结构：深蓝渐变底 + 居中气泡球体 + 单色剪影",
+        "部分支持读取该层的第三方桌面，在 Android 13 以下同样可以显示镂空效果",
+        "Android 5.0~7.1 仍使用位图图标"
+      ]
+    },
     {
       "versionName": "1.4.1",
       "releaseDate": "2026-10-15",
