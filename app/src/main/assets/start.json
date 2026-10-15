@@ -1,11 +1,19 @@
 {
-  "versionName": "1.4.0",
-  "versionCode": 8,
+  "versionName": "1.4.1",
+  "versionCode": 9,
   "releaseDate": "2026-10-15",
   "downloadUrl": "https://github.com/chumianyi/ChatYUE/releases/latest",
   "agreementUrl": "https://chumianyi.github.io/ChatYUE/agreement.html",
   "privacyUrl": "https://chumianyi.github.io/ChatYUE/privacy.html",
   "changelog": [
+    {
+      "versionName": "1.4.1",
+      "releaseDate": "2026-10-15",
+      "items": [
+        "关闭应用自适应图标，改回传统位图图标",
+        "普通启动器显示圆角方形图标，圆形标启动器显示圆形图标；各系统版本图标样式统一"
+      ]
+    },
     {
       "versionName": "1.4.0",
       "releaseDate": "2026-10-15",
