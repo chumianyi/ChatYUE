@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import com.chatyue.chat.CompatToast
 import com.chatyue.chat.R
 import com.chatyue.chat.databinding.ActivityLicenseDetailBinding
 
@@ -25,20 +26,20 @@ class LicenseDetailActivity : AppCompatActivity() {
         binding.backButton.setOnClickListener { finish() }
 
         val entries = Licenses.all(this)
-        val index = intent.getIntExtra(EXTRA_INDEX, 0).coerceIn(0, entries.lastIndex.coerceAtLeast(0))
         if (entries.isEmpty()) {
             finish()
             return
         }
+        val index = intent.getIntExtra(EXTRA_INDEX, 0).coerceIn(0, entries.lastIndex)
         val entry = entries[index]
 
         binding.titleText.text = getString(R.string.licenses_detail_title, entry.name)
         binding.nameText.text = if (entry.self) {
-            "${entry.name} · ${getString(R.string.licenses_self_suffix)}"
+            entry.name + " · " + getString(R.string.licenses_self_suffix)
         } else {
             entry.name
         }
-        binding.metaText.text = "v${entry.version} · ${entry.license}"
+        binding.metaText.text = "v" + entry.version + " · " + entry.license
         binding.holderText.text = entry.holder
 
         binding.officialButton.setOnClickListener { openOfficial(entry.url) }
@@ -57,7 +58,7 @@ class LicenseDetailActivity : AppCompatActivity() {
         try {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
         } catch (e: ActivityNotFoundException) {
-            com.chatyue.chat.CompatToast.show(this, url, android.widget.Toast.LENGTH_LONG)
+            CompatToast.show(this, url, android.widget.Toast.LENGTH_LONG)
         }
     }
 }

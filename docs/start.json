@@ -1,30 +1,19 @@
 {
-  "versionName": "1.4.0",
-  "versionCode": 6,
+  "versionName": "1.3.0",
+  "versionCode": 7,
   "releaseDate": "2026-10-15",
   "downloadUrl": "https://github.com/chumianyi/ChatYUE/releases/latest",
   "agreementUrl": "https://chumianyi.github.io/ChatYUE/agreement.html",
   "privacyUrl": "https://chumianyi.github.io/ChatYUE/privacy.html",
   "changelog": [
     {
-      "versionName": "1.4.0",
+      "versionName": "1.3.0",
       "releaseDate": "2026-10-15",
       "items": [
         "应用更名为 ChatYUE：应用名、包名、主题、存储与工程名全部同步更新",
-        "全新应用图标：替换掉原有的全部 DeepSeek 鲸鱼图形，含自适应图标与 Android 13 主题图标",
+        "全新应用图标：替换掉原有的全部 DeepSeek 鲸鱼图形，含 5 档密度图标、圆形图标、Android 8+ 自适应图标与 Android 13 主题图标",
         "关于页面最下方新增「许可证」按钮，可查看本项目与全部第三方开源组件的完整许可证全文",
-        "用户协议、隐私政策与更新日志迁移至新站点地址"
-      ]
-    },
-    {
-      "versionName": "1.3.0",
-      "releaseDate": "2026-10-14",
-      "items": [
-        "界面全量改用 Jetpack Compose 重写，按小米 HyperOS（Miuix）设计规范实现顶栏、消息卡片、胶囊按钮与侧边栏",
-        "新增跟随系统的深色模式",
-        "最低系统版本保持 Android 5.0（API 21）不变",
-        "构建链路升级：Kotlin 2.4.20 + AGP 8.13.2 + Compose 1.9.0",
-        "下架联网搜索功能"
+        "界面与交互保持 1.2.0 原样，未改动布局与主题"
       ]
     },
     {
