@@ -49,8 +49,17 @@ jobs:
           distribution: temurin
           java-version: "11"
 
-      - name: Build debug APK
-        run: gradle assembleDebug --no-daemon --stacktrace
+      # 正式版：使用仓库内固定的 keystore 签名（../keystore.properties）
+      - name: Build release APK
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Verify signature
+        run: |
+          set -e
+          BT="$ANDROID_HOME/build-tools/33.0.1"
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          echo "APK: $APK"
+          "$BT/apksigner" verify --print-certs "$APK" | head -4
 
       - name: Lint
         run: gradle lintDebug --no-daemon --stacktrace
@@ -60,12 +69,16 @@ jobs:
         run: |
           set -e
           BT="$ANDROID_HOME/build-tools/33.0.1"
-          APK=$(ls app/build/outputs/apk/debug/*.apk | head -1)
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
           "$BT/aapt2" dump badging "$APK" > /tmp/badging.txt
           echo "---- badging ----"
           grep -E "^package|^sdkVersion|^targetSdkVersion|^application-label" /tmp/badging.txt
           if ! grep -q "sdkVersion:'3'" /tmp/badging.txt; then
             echo "::error::minSdk is not 3, minimum supported version was changed"
+            exit 1
+          fi
+          if grep -q "application-debuggable" /tmp/badging.txt; then
+            echo "::error::this is a debuggable build, release expected"
             exit 1
           fi
 
@@ -89,11 +102,22 @@ jobs:
           done
           if [ "$FOUND" = "1" ]; then exit 1; fi
 
+      - name: Collect APK
+        run: |
+          set -e
+          VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          cd app/build/outputs/apk/release
+          for f in *.apk; do
+            case "$f" in veryoldDpSk-*) continue;; esac
+            mv "$f" "veryoldDpSk-${VERSION}-release.apk"
+          done
+          ls -l
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: veryoldDpSk-debug-apk
-          path: veryoldDpSk/app/build/outputs/apk/debug/*.apk
+          name: veryoldDpSk-release-apk
+          path: veryoldDpSk/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
       - name: Upload lint report

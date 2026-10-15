@@ -1,5 +1,18 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
+}
+
+/*
+ * 固定签名：与主应用 ChatYUE 共用仓库根目录下的同一份 keystore，
+ * 保证本地与云端 CI 产出的 APK 签名一致，可以互相覆盖安装。
+ */
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("../keystore.properties")
+    if (file.exists()) {
+        file.inputStream().use { load(it) }
+    }
 }
 
 android {
@@ -28,9 +41,26 @@ android {
         targetCompatibility = JavaVersion.VERSION_1_7
     }
 
+    signingConfigs {
+        if (keystoreProperties.isNotEmpty()) {
+            create("release") {
+                storeFile = rootProject.file("../keystore/chatyue-release.jks")
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // 不开启混淆与资源压缩：老设备上任何压缩带来的不确定性都不值得冒险。
             isMinifyEnabled = false
+            isShrinkResources = false
+            isDebuggable = false
+            if (keystoreProperties.isNotEmpty()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

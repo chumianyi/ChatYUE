@@ -322,6 +322,7 @@ Made with ❤️ for old devices
 从 v1.4.1 起，云端构建产出的是 **release 正式版**（`assembleRelease`），不再提供 debug 包。
 
 - 签名使用仓库内固定的 keystore：`keystore/chatyue-release.jks`，配置见 `keystore.properties`
+- 两个应用（ChatYUE 与 veryoldDpSk）共用这份签名，各自都有 release 正式版
 - 本地与云端 CI 共用同一份签名，因此每次产出的 APK 都能互相覆盖安装
 - 正式版 `android:debuggable=false`，体积与运行效率均优于 debug 包
 - 未开启代码混淆与资源压缩（`optimization.enable = false`），避免运行期异常
