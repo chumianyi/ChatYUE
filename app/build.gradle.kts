@@ -14,8 +14,8 @@ android {
         applicationId = "com.chatyue.chat"
         minSdk = 21
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.3.0"
+        versionCode = 8
+        versionName = "1.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

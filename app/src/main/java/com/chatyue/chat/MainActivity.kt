@@ -1,6 +1,8 @@
 package com.chatyue.chat
 
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -166,7 +168,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun configureLists() {
-        messageAdapter = ChatMessageAdapter(Markwon.create(this))
+        messageAdapter = ChatMessageAdapter(Markwon.create(this), ::handleMessageAction)
         binding.messageList.apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = messageAdapter
@@ -617,6 +619,8 @@ class MainActivity : AppCompatActivity() {
             messages,
             scrollToEnd = followStreaming,
             guardScrollForStreaming = true,
+            // 流式输出期间先不显示操作栏，回答结束后再出现。
+            streamingMessageId = STREAM_ASSISTANT_ID,
         )
     }
 
@@ -624,10 +628,12 @@ class MainActivity : AppCompatActivity() {
         messages: List<ChatMessage>,
         scrollToEnd: Boolean = true,
         guardScrollForStreaming: Boolean = false,
+        streamingMessageId: Long? = null,
     ) {
         val hasMessages = messages.isNotEmpty()
         binding.welcomeContainer.visibility = if (hasMessages) View.GONE else View.VISIBLE
         binding.messageList.visibility = if (hasMessages) View.VISIBLE else View.GONE
+        messageAdapter.setStreamingMessageId(streamingMessageId)
         messageAdapter.submitMessages(messages)
         updateContextIndicator(messages)
         cancelPendingMessageListScroll(binding.messageList)
@@ -846,6 +852,37 @@ class MainActivity : AppCompatActivity() {
                 binding.drawerLayout.closeDrawer(GravityCompat.START)
             }
             .show()
+    }
+
+    // ---------------- 消息操作栏 ----------------
+
+    /** 回答底部的复制 / 点赞 / 点踩。 */
+    private fun handleMessageAction(action: MessageAction, message: ChatMessage) {
+        when (action) {
+            MessageAction.COPY -> copyMessage(message)
+            MessageAction.LIKE -> {
+                if (messageAdapter.toggleLike(message.id)) {
+                    CompatToast.show(this, R.string.action_like_done)
+                }
+            }
+            MessageAction.DISLIKE -> {
+                if (messageAdapter.toggleDislike(message.id)) {
+                    CompatToast.show(this, R.string.action_dislike_done)
+                }
+            }
+        }
+    }
+
+    private fun copyMessage(message: ChatMessage) {
+        if (message.content.isEmpty()) return
+        val clipboard = getSystemService<ClipboardManager>() ?: return
+        clipboard.setPrimaryClip(
+            ClipData.newPlainText(getString(R.string.app_name), message.content),
+        )
+        // Android 13 起系统会自带「已复制」提示，避免重复弹两条。
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            CompatToast.show(this, R.string.action_copy_done)
+        }
     }
 
     // ---------------- 状态与提示 ----------------

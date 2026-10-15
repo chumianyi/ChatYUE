@@ -1,11 +1,21 @@
 {
-  "versionName": "1.3.0",
-  "versionCode": 7,
+  "versionName": "1.4.0",
+  "versionCode": 8,
   "releaseDate": "2026-10-15",
   "downloadUrl": "https://github.com/chumianyi/ChatYUE/releases/latest",
   "agreementUrl": "https://chumianyi.github.io/ChatYUE/agreement.html",
   "privacyUrl": "https://chumianyi.github.io/ChatYUE/privacy.html",
   "changelog": [
+    {
+      "versionName": "1.4.0",
+      "releaseDate": "2026-10-15",
+      "items": [
+        "AI 回答底部新增操作栏：复制、点赞、点踩",
+        "点复制后图标变为勾选状态，提示「已复制」，稍后自动恢复",
+        "点赞与点踩互斥，选中后图标高亮，再次点击可取消",
+        "操作栏在回答生成过程中不显示，生成结束后才出现"
+      ]
+    },
     {
       "versionName": "1.3.0",
       "releaseDate": "2026-10-15",

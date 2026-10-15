@@ -1,8 +1,10 @@
 package com.chatyue.chat
 
+import android.content.res.ColorStateList
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import io.noties.markwon.Markwon
@@ -11,11 +13,26 @@ import com.chatyue.chat.databinding.ItemMessageSummaryBinding
 import com.chatyue.chat.databinding.ItemMessageThinkingBinding
 import com.chatyue.chat.databinding.ItemMessageUserBinding
 
+/** 消息底部的操作按钮。 */
+enum class MessageAction {
+    COPY,
+    LIKE,
+    DISLIKE,
+}
+
 class ChatMessageAdapter(
     private val markwon: Markwon,
+    private val onAction: (MessageAction, ChatMessage) -> Unit,
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private val messages = mutableListOf<ChatMessage>()
     private val collapsedThinkingIds = mutableSetOf<Long>()
+
+    /** 当前正在流式输出的回答 id，它的操作栏暂时不显示。 */
+    private var streamingMessageId: Long? = null
+
+    /** 点赞 / 点踩的本地状态（互斥）。 */
+    private val likedIds = mutableSetOf<Long>()
+    private val dislikedIds = mutableSetOf<Long>()
 
     init {
         setHasStableIds(true)
@@ -60,6 +77,7 @@ class ChatMessageAdapter(
                 AssistantMessageViewHolder(
                     ItemMessageAssistantBinding.inflate(inflater, parent, false),
                     markwon,
+                    onAction,
                 )
             }
         }
@@ -73,13 +91,37 @@ class ChatMessageAdapter(
                 val followsThinking = position > 0 &&
                     (messages[position - 1].role == MessageRole.THINKING_FINISHED ||
                         messages[position - 1].role == MessageRole.THINKING_ACTIVE)
-                holder.bind(message, showLogo = !followsThinking)
+                holder.bind(
+                    message = message,
+                    showLogo = !followsThinking,
+                    showActions = message.id != streamingMessageId,
+                    liked = likedIds.contains(message.id),
+                    disliked = dislikedIds.contains(message.id),
+                )
             }
             is ThinkingMessageViewHolder -> {
                 holder.bind(message, collapsedThinkingIds.contains(message.id))
             }
             is SummaryMessageViewHolder -> holder.bind(message)
         }
+    }
+
+    override fun onBindViewHolder(
+        holder: RecyclerView.ViewHolder,
+        position: Int,
+        payloads: MutableList<Any>,
+    ) {
+        // 只改了点赞 / 点踩状态时，避免重新解析 Markdown，防止长回答卡顿。
+        if (payloads.isNotEmpty() && holder is AssistantMessageViewHolder) {
+            val message = messages[position]
+            holder.bindActions(
+                showActions = message.id != streamingMessageId,
+                liked = likedIds.contains(message.id),
+                disliked = dislikedIds.contains(message.id),
+            )
+            return
+        }
+        super.onBindViewHolder(holder, position, payloads)
     }
 
     override fun getItemCount(): Int = messages.size
@@ -113,6 +155,49 @@ class ChatMessageAdapter(
         diff.dispatchUpdatesTo(this)
     }
 
+    /** 记录正在流式输出的回答 id，流式期间它的操作栏不显示。 */
+    fun setStreamingMessageId(messageId: Long?) {
+        if (streamingMessageId == messageId) return
+        streamingMessageId = messageId
+        // 只有 AI 回答带操作栏，逐项刷新即可，不必整表重绑。
+        messages.forEachIndexed { index, message ->
+            if (message.role == MessageRole.ASSISTANT) {
+                notifyItemChanged(index, PAYLOAD_ACTIONS)
+            }
+        }
+    }
+
+    /** 切换点赞，与点踩互斥；返回切换后的状态。 */
+    fun toggleLike(messageId: Long): Boolean {
+        val liked = if (likedIds.add(messageId)) {
+            dislikedIds.remove(messageId)
+            true
+        } else {
+            likedIds.remove(messageId)
+            false
+        }
+        notifyMessage(messageId)
+        return liked
+    }
+
+    /** 切换点踩，与点赞互斥；返回切换后的状态。 */
+    fun toggleDislike(messageId: Long): Boolean {
+        val disliked = if (dislikedIds.add(messageId)) {
+            likedIds.remove(messageId)
+            true
+        } else {
+            dislikedIds.remove(messageId)
+            false
+        }
+        notifyMessage(messageId)
+        return disliked
+    }
+
+    private fun notifyMessage(messageId: Long) {
+        val position = messages.indexOfFirst { it.id == messageId }
+        if (position >= 0) notifyItemChanged(position, PAYLOAD_ACTIONS)
+    }
+
     private fun toggleThinking(messageId: Long) {
         if (!collapsedThinkingIds.add(messageId)) {
             collapsedThinkingIds.remove(messageId)
@@ -132,10 +217,73 @@ class ChatMessageAdapter(
     private class AssistantMessageViewHolder(
         private val binding: ItemMessageAssistantBinding,
         private val markwon: Markwon,
+        private val onAction: (MessageAction, ChatMessage) -> Unit,
     ) : RecyclerView.ViewHolder(binding.root) {
-        fun bind(message: ChatMessage, showLogo: Boolean) {
+        private var current: ChatMessage? = null
+
+        /** 复制成功后把图标恢复成复制。 */
+        private val resetCopyIcon = Runnable {
+            binding.copyButton.setImageResource(R.drawable.ic_action_copy)
+        }
+
+        init {
+            binding.copyButton.setOnClickListener {
+                val message = current ?: return@setOnClickListener
+                onAction(MessageAction.COPY, message)
+                // 复制完成后图标变成勾，稍后自动恢复。
+                binding.copyButton.setImageResource(R.drawable.ic_action_check)
+                binding.copyButton.removeCallbacks(resetCopyIcon)
+                binding.copyButton.postDelayed(resetCopyIcon, COPY_FEEDBACK_MILLIS)
+            }
+            binding.likeButton.setOnClickListener {
+                current?.let { onAction(MessageAction.LIKE, it) }
+            }
+            binding.dislikeButton.setOnClickListener {
+                current?.let { onAction(MessageAction.DISLIKE, it) }
+            }
+        }
+
+        fun bind(
+            message: ChatMessage,
+            showLogo: Boolean,
+            showActions: Boolean,
+            liked: Boolean,
+            disliked: Boolean,
+        ) {
+            current = message
             binding.assistantLogo.visibility = if (showLogo) View.VISIBLE else View.GONE
             markwon.setMarkdown(binding.messageText, message.content)
+
+            // 复用视图时清掉上一次的复制反馈。
+            binding.copyButton.removeCallbacks(resetCopyIcon)
+            binding.copyButton.setImageResource(R.drawable.ic_action_copy)
+
+            bindActions(showActions, liked, disliked)
+        }
+
+        /** 只更新操作栏（点赞 / 点踩状态变化时调用，不重新渲染正文）。 */
+        fun bindActions(
+            showActions: Boolean,
+            liked: Boolean,
+            disliked: Boolean,
+        ) {
+            binding.messageActions.visibility = if (showActions) View.VISIBLE else View.GONE
+            tintAction(binding.likeButton, liked)
+            tintAction(binding.dislikeButton, disliked)
+            binding.likeButton.contentDescription = binding.root.context.getString(
+                if (liked) R.string.action_like_done else R.string.action_like,
+            )
+        }
+
+        private fun tintAction(
+            button: androidx.appcompat.widget.AppCompatImageButton,
+            active: Boolean,
+        ) {
+            val color = ContextCompat.getColor(
+                binding.root.context,
+                if (active) R.color.ds_blue else R.color.ds_text_secondary,
+            )
+            button.imageTintList = ColorStateList.valueOf(color)
         }
     }
 
@@ -194,6 +342,12 @@ class ChatMessageAdapter(
     }
 
     companion object {
+        /** 复制成功后打勾图标的停留时长。 */
+        private const val COPY_FEEDBACK_MILLIS = 1500L
+
+        /** 只刷新操作栏的局部更新标记。 */
+        private val PAYLOAD_ACTIONS = Any()
+
         private const val VIEW_TYPE_USER = 1
         private const val VIEW_TYPE_ASSISTANT = 2
         private const val VIEW_TYPE_THINKING = 3
