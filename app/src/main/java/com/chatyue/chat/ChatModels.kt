@@ -1,9 +1,25 @@
 package com.chatyue.chat
 
+/** 会话的记忆模式（2.0 新建会话时由用户选择）。 */
+enum class ConversationMemoryMode {
+    /** 全局对话：接入全域记忆系统，与所有历史会话数据互通共享。 */
+    GLOBAL,
+
+    /** 单独对话：当前会话独立隔离运行，不参与全局记忆。 */
+    ISOLATED,
+    ;
+
+    companion object {
+        fun fromName(value: String?): ConversationMemoryMode =
+            entries.firstOrNull { it.name == value } ?: GLOBAL
+    }
+}
+
 data class Conversation(
     val id: Long,
     val title: String,
     val updatedAt: Long,
+    val memoryMode: ConversationMemoryMode = ConversationMemoryMode.GLOBAL,
 )
 
 enum class MessageRole {

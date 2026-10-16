@@ -16,6 +16,15 @@ object Prompts {
     /** 上下文压缩时携带的对话原文。 */
     fun compressionUserPrompt(transcript: String): String =
         "以下是需要压缩的对话记录：\n\n$transcript\n\n请输出压缩后的摘要。"
+
+    /**
+     * 2.0 全局记忆：把其他全局会话的历史作为 system 消息注入，
+     * 让模型可以调用用户在所有全局对话中沉淀的信息。
+     */
+    fun globalMemorySystem(transcript: String): String =
+        "以下是用户在其他历史全局会话中的对话记录，属于用户的长期记忆。" +
+            "当前对话中如果遇到与这些记录相关的信息，可以直接参考并保持一致性；" +
+            "若与当前对话无关，则忽略即可，不要主动向用户提起：\n\n$transcript"
 }
 
 /** 参与上下文计算、并会被发送给模型的消息角色。 */

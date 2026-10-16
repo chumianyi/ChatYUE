@@ -12,6 +12,7 @@ import android.os.Bundle
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.PopupMenu
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
@@ -35,7 +36,9 @@ import com.chatyue.chat.backend.BackendErrorType
 import com.chatyue.chat.backend.BackendFinishReason
 import com.chatyue.chat.backend.BackendMessage
 import com.chatyue.chat.backend.BackendRole
+import com.chatyue.chat.backend.ChatMode
 import com.chatyue.chat.backend.ChatRequest
+import com.chatyue.chat.backend.ModelCatalog
 import com.chatyue.chat.databinding.ActivityMainBinding
 import com.chatyue.chat.remote.RemoteConfigRepository
 import com.chatyue.chat.tools.EssayActivity
@@ -65,6 +68,12 @@ class MainActivity : AppCompatActivity() {
     private var pendingImageName: String? = null
     private var pendingTextName: String? = null
     private var pendingTextContent: String? = null
+
+    /** 新会话的默认记忆模式（2.0：新建会话时由用户选择，默认全局）。 */
+    private var pendingMemoryMode: ConversationMemoryMode = ConversationMemoryMode.GLOBAL
+
+    /** 强制升级守护（2.0）。 */
+    private var versionGuard: VersionGuard? = null
 
     private val ioExecutor = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "deepseek-io").apply { isDaemon = true }
@@ -112,9 +121,15 @@ class MainActivity : AppCompatActivity() {
         observeGeneration()
         observeContextEvents()
 
+        applyGlobalBackground()
+        registerAppConfigListeners()
+
         restoreConversation(savedInstanceState)
         refreshConversationList()
         initialized = true
+
+        // 2.0：强制版本更新守护，静默常驻。
+        versionGuard = VersionGuard(this).also { it.start() }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -125,11 +140,19 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    override fun onStart() {
+        super.onStart()
+        // 2.0：每次回到前台都静默补检一次版本。
+        versionGuard?.start()
+    }
+
     override fun onDestroy() {
         // initialized 为 false 说明本次 onCreate 直接跳去了协议页，此时还没创建 ViewModel。
         if (initialized && !isChangingConfigurations) {
             viewModel.cancelGeneration()
         }
+        versionGuard?.dismiss()
+        versionGuard = null
         ioExecutor.shutdownNow()
         super.onDestroy()
     }
@@ -168,7 +191,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun configureLists() {
-        messageAdapter = ChatMessageAdapter(Markwon.create(this), ::handleMessageAction)
+        messageAdapter = ChatMessageAdapter(Markwon.create(this), ::handleMessageAction, ::handleMessageLongPress)
         binding.messageList.apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = messageAdapter
@@ -212,8 +235,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun configureComposer() {
-        // 思考模式固定开启，不可切换，这里只做视觉标识。
+        // 2.0：双模型双模式，点击输入框上方的模式标签可切换（思考/快速）。
         binding.thinkingModeLabel.isSelected = true
+        updateModeLabel()
+        binding.thinkingModeLabel.setOnClickListener { showModeSwitchDialog() }
         binding.attachmentRemove.setOnClickListener { clearAttachments() }
 
         binding.messageInput.doAfterTextChanged {
@@ -232,7 +257,7 @@ class MainActivity : AppCompatActivity() {
             binding.drawerLayout.openDrawer(GravityCompat.START)
         }
         binding.newChatButton.setOnClickListener {
-            showNewConversation()
+            showNewConversationModeDialog()
             binding.drawerLayout.closeDrawer(GravityCompat.START)
         }
         binding.sendButton.setOnClickListener {
@@ -489,6 +514,7 @@ class MainActivity : AppCompatActivity() {
         val wasNewConversation = currentConversationId == null
         val conversationId = currentConversationId ?: repository.createConversation(
             ConversationFormatter.titleFrom(userContent),
+            pendingMemoryMode,
         ).also {
             currentConversationId = it
             binding.chatTitle.text = ConversationFormatter.titleFrom(userContent)
@@ -513,6 +539,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun dispatchChatRequest(conversationId: Long) {
         val messages = buildList {
+            // 2.0 全局记忆：全局模式会话会注入其他全局会话的历史作为 system 记忆。
+            val conversation = repository.getConversation(conversationId)
+            if (conversation?.memoryMode == ConversationMemoryMode.GLOBAL) {
+                val memory = buildGlobalMemoryTranscript(
+                    repository.getGlobalMemoryMessages(conversationId),
+                )
+                if (!memory.isNullOrBlank()) {
+                    add(BackendMessage(BackendRole.SYSTEM, memory))
+                }
+            }
             repository.getMessages(conversationId).forEach { message ->
                 when (message.role) {
                     MessageRole.USER -> add(BackendMessage(BackendRole.USER, message.content))
@@ -525,7 +561,29 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        viewModel.sendMessage(ChatRequest(conversationId.toString(), messages))
+        viewModel.sendMessage(
+            ChatRequest(
+                conversationId = conversationId.toString(),
+                messages = messages,
+                mode = AppConfig.chatMode(this),
+            ),
+        )
+    }
+
+    /** 把其他全局会话的历史整理成一段 system 记忆文本（限量传入，避免超预算）。 */
+    private fun buildGlobalMemoryTranscript(messages: List<ChatMessage>): String? {
+        if (messages.isEmpty()) return null
+        val recent = messages.takeLast(GLOBAL_MEMORY_MAX_MESSAGES)
+        val transcript = recent.joinToString(separator = "\n\n") { message ->
+            val speaker = when (message.role) {
+                MessageRole.USER -> "用户"
+                MessageRole.ASSISTANT -> "助手"
+                else -> return@joinToString ""
+            }
+            "$speaker：${message.content}"
+        }.trim()
+        if (transcript.isBlank()) return null
+        return Prompts.globalMemorySystem(transcript)
     }
 
     private fun restoreConversation(savedInstanceState: Bundle?) {
@@ -564,6 +622,72 @@ class MainActivity : AppCompatActivity() {
         showMessages(emptyList())
         hideKeyboard()
         refreshConversationList(binding.searchInput.text?.toString().orEmpty())
+    }
+
+    /**
+     * 2.0：新建会话时的记忆模式选择。
+     * 全局对话 = 接入全域记忆，与所有历史会话数据互通；
+     * 单独对话 = 本会话独立隔离，不参与全局记忆。
+     */
+    private fun showNewConversationModeDialog() {
+        val options = arrayOf(
+            getString(R.string.memory_mode_global_title) + "  ·  " +
+                getString(R.string.memory_mode_global_summary),
+            getString(R.string.memory_mode_isolated_title) + "  ·  " +
+                getString(R.string.memory_mode_isolated_summary),
+        )
+        val checked = if (pendingMemoryMode == ConversationMemoryMode.ISOLATED) 1 else 0
+        AlertDialog.Builder(this)
+            .setTitle(R.string.memory_mode_dialog_title)
+            .setSingleChoiceItems(options, checked) { dialog, which ->
+                pendingMemoryMode =
+                    if (which == 1) ConversationMemoryMode.ISOLATED else ConversationMemoryMode.GLOBAL
+                dialog.dismiss()
+                showNewConversation()
+            }
+            .setNegativeButton(R.string.memory_mode_dialog_cancel, null)
+            .show()
+    }
+
+    /** 2.0：思考/快速模式切换，两种模式各自绑定固定模型，不可混用。 */
+    private fun showModeSwitchDialog() {
+        val modes = ChatMode.entries.toTypedArray()
+        val labels = modes.map { mode ->
+            "${ModelCatalog.displayName(mode)}  ·  ${ModelCatalog.description(mode)}"
+        }.toTypedArray()
+        val checked = modes.indexOf(AppConfig.chatMode(this)).coerceAtLeast(0)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.mode_switch_title)
+            .setSingleChoiceItems(labels, checked) { dialog, which ->
+                AppConfig.setChatMode(this, modes[which])
+                updateModeLabel()
+                dialog.dismiss()
+                CompatToast.show(
+                    this,
+                    getString(R.string.mode_switched, ModelCatalog.displayName(modes[which])),
+                    Toast.LENGTH_SHORT,
+                )
+            }
+            .setNegativeButton(R.string.memory_mode_dialog_cancel, null)
+            .show()
+    }
+
+    private fun updateModeLabel() {
+        binding.thinkingModeLabel.text = ModelCatalog.displayName(AppConfig.chatMode(this))
+    }
+
+    /** 2.0 全局背景：把用户设置的纯色/图片背景应用到主内容区最底层。 */
+    private fun applyGlobalBackground() {
+        AppearanceStore.applyTo(this, binding.mainContent)
+    }
+
+    /** 2.0：界面尺寸档位变化时即时重建界面。 */
+    private fun registerAppConfigListeners() {
+        AppConfig.registerListener(object : AppConfig.Listener {
+            override fun onUiScaleChanged(scale: AppConfig.UiScale) {
+                if (!isFinishing) recreate()
+            }
+        })
     }
 
     private fun selectConversation(conversation: Conversation) {
@@ -736,8 +860,9 @@ class MainActivity : AppCompatActivity() {
         PopupMenu(this, binding.moreButton).apply {
             menu.add(0, MENU_CHANGELOG, 0, R.string.menu_changelog)
             menu.add(0, MENU_CHECK_UPDATE, 1, R.string.menu_check_update)
-            menu.add(0, MENU_ABOUT, 2, R.string.about_menu)
-            menu.add(0, MENU_CLEAR_HISTORY, 3, R.string.clear_history)
+            menu.add(0, MENU_SETTINGS, 2, R.string.menu_settings)
+            menu.add(0, MENU_ABOUT, 3, R.string.about_menu)
+            menu.add(0, MENU_CLEAR_HISTORY, 4, R.string.clear_history)
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     MENU_CHANGELOG -> {
@@ -747,6 +872,11 @@ class MainActivity : AppCompatActivity() {
 
                     MENU_CHECK_UPDATE -> {
                         checkUpdate()
+                        true
+                    }
+
+                    MENU_SETTINGS -> {
+                        startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
                         true
                     }
 
@@ -873,6 +1003,95 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** 长按消息气泡：复制 / 重新生成 / 删除。 */
+    private fun handleMessageLongPress(message: ChatMessage, anchor: View) {
+        PopupMenu(this, anchor).apply {
+            menu.add(0, MENU_COPY_ITEM, 0, R.string.action_copy)
+            menu.add(0, MENU_REGENERATE_ITEM, 1, R.string.action_regenerate)
+            menu.add(0, MENU_DELETE_ITEM, 2, R.string.action_delete)
+            setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    MENU_COPY_ITEM -> {
+                        copyMessage(message)
+                        true
+                    }
+
+                    MENU_REGENERATE_ITEM -> {
+                        regenerateFrom(message)
+                        true
+                    }
+
+                    MENU_DELETE_ITEM -> {
+                        confirmDeleteMessage(message)
+                        true
+                    }
+
+                    else -> false
+                }
+            }
+        }.show()
+    }
+
+    /**
+     * 重新生成：以该消息对应的提问为基准，删掉其后的全部内容并重新请求。
+     *
+     * 长按用户消息 → 以该用户消息为基准；长按助手消息 → 回溯到它之前的最后一条用户提问。
+     */
+    private fun regenerateFrom(message: ChatMessage) {
+        if (isGenerating()) {
+            stopGeneration(showNotice = false)
+        }
+        val conversationId = message.conversationId
+        val messages = repository.getMessages(conversationId)
+        val anchorId = if (message.role == MessageRole.USER) {
+            message.id
+        } else {
+            messages.lastOrNull {
+                it.role == MessageRole.USER && it.id < message.id
+            }?.id ?: run {
+                CompatToast.show(this, R.string.regenerate_no_user_message)
+                return
+            }
+        }
+        if (!hasUsableNetwork()) {
+            CompatToast.show(
+                this,
+                R.string.network_unavailable,
+                Toast.LENGTH_LONG,
+            )
+            return
+        }
+        repository.deleteMessagesAfter(anchorId)
+        currentConversationId = conversationId
+        followStreaming = true
+        pendingStreamingState = null
+        pendingMessageReloadConversationId = null
+        loadMessages(conversationId)
+        dispatchChatRequest(conversationId)
+        CompatToast.show(this, R.string.action_regenerate_started)
+    }
+
+    private fun confirmDeleteMessage(message: ChatMessage) {
+        AlertDialog(this)
+            .setTitle(R.string.confirm_delete_message_title)
+            .setMessage(R.string.confirm_delete_message)
+            .setPositiveButton(R.string.confirm_delete_positive) { _, _ ->
+                performDeleteMessage(message)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun performDeleteMessage(message: ChatMessage) {
+        val conversationId = message.conversationId
+        repository.deleteMessage(message.id)
+        if (currentConversationId == conversationId) {
+            loadMessages(conversationId)
+        }
+        refreshConversationList(binding.searchInput.text?.toString().orEmpty())
+        CompatToast.show(this, R.string.action_delete_done)
+    }
+
     private fun copyMessage(message: ChatMessage) {
         if (message.content.isEmpty()) return
         val clipboard = getSystemService<ClipboardManager>() ?: return
@@ -976,9 +1195,16 @@ class MainActivity : AppCompatActivity() {
         private const val NO_CONVERSATION_ID = -1L
         private const val MENU_CHANGELOG = 1
         private const val MENU_CHECK_UPDATE = 2
+        private const val MENU_SETTINGS = 5
         private const val MENU_ABOUT = 3
         private const val MENU_CLEAR_HISTORY = 4
+        private const val MENU_COPY_ITEM = 100
+        private const val MENU_REGENERATE_ITEM = 101
+        private const val MENU_DELETE_ITEM = 102
         private const val STREAM_THINKING_ID = -1L
         private const val STREAM_ASSISTANT_ID = -2L
+
+        /** 全局记忆最多携带的历史消息条数（调用预算保护）。 */
+        private const val GLOBAL_MEMORY_MAX_MESSAGES = 60
     }
 }

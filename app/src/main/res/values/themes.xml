@@ -44,6 +44,17 @@
         <item name="android:textStyle">bold</item>
     </style>
 
+    <style name="Widget.ChatYUE.GroupHeader" parent="">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginStart">20dp</item>
+        <item name="android:layout_marginTop">18dp</item>
+        <item name="android:layout_marginBottom">8dp</item>
+        <item name="android:textColor">@color/ds_text_secondary</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
     <style name="Widget.ChatYUE.PrimaryButton" parent="Widget.AppCompat.Button">
         <item name="android:background">@drawable/bg_primary_button</item>
         <item name="android:minHeight">44dp</item>
@@ -73,5 +84,22 @@
         <item name="android:navigationBarColor">@color/ds_surface</item>
         <item name="android:windowActionModeOverlay">true</item>
         <item name="windowActionModeOverlay">true</item>
+    </style>
+    <!-- 启动画面（2.0）：纯白全屏、无标题栏 -->
+    <style name="Theme.ChatYUE.Splash" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:colorAccent">@color/ds_blue</item>
+        <item name="android:statusBarColor">@android:color/white</item>
+        <item name="android:navigationBarColor">@android:color/white</item>
+    </style>
+
+    <!-- OOBE 引导（2.0）：背景由自定义 View 绘制，状态栏透明让渐变延伸 -->
+    <style name="Theme.ChatYUE.Oobe" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:colorAccent">@color/ds_blue</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 </resources>

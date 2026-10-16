@@ -20,7 +20,8 @@ class LocalChatRepository(context: Context) :
             CREATE TABLE $TABLE_CONVERSATIONS (
                 $COLUMN_ID INTEGER PRIMARY KEY AUTOINCREMENT,
                 $COLUMN_TITLE TEXT NOT NULL,
-                $COLUMN_UPDATED_AT INTEGER NOT NULL
+                $COLUMN_UPDATED_AT INTEGER NOT NULL,
+                $COLUMN_MEMORY_MODE TEXT NOT NULL DEFAULT 'GLOBAL'
             )
             """.trimIndent(),
         )
@@ -49,18 +50,39 @@ class LocalChatRepository(context: Context) :
         oldVersion: Int,
         newVersion: Int,
     ) {
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_MESSAGES")
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_CONVERSATIONS")
-        onCreate(db)
+        // 1 -> 2：会话表新增「记忆模式」列。
+        // 使用 ALTER TABLE 原地升级，保证既有对话数据不丢失。
+        if (oldVersion < 2) {
+            db.execSQL(
+                "ALTER TABLE $TABLE_CONVERSATIONS ADD COLUMN " +
+                    "$COLUMN_MEMORY_MODE TEXT NOT NULL DEFAULT 'GLOBAL'",
+            )
+        }
     }
 
-    override fun createConversation(title: String): Long {
+    override fun createConversation(
+        title: String,
+        memoryMode: ConversationMemoryMode,
+    ): Long {
         val now = System.currentTimeMillis()
         val values = ContentValues().apply {
             put(COLUMN_TITLE, title)
             put(COLUMN_UPDATED_AT, now)
+            put(COLUMN_MEMORY_MODE, memoryMode.name)
         }
         return writableDatabase.insertOrThrow(TABLE_CONVERSATIONS, null, values)
+    }
+
+    override fun updateConversationMemoryMode(
+        conversationId: Long,
+        memoryMode: ConversationMemoryMode,
+    ) {
+        writableDatabase.update(
+            TABLE_CONVERSATIONS,
+            ContentValues().apply { put(COLUMN_MEMORY_MODE, memoryMode.name) },
+            "$COLUMN_ID = ?",
+            arrayOf(conversationId.toString()),
+        )
     }
 
     override fun updateConversationTitle(conversationId: Long, title: String) {
@@ -98,7 +120,8 @@ class LocalChatRepository(context: Context) :
                 SELECT DISTINCT
                     c.$COLUMN_ID,
                     c.$COLUMN_TITLE,
-                    c.$COLUMN_UPDATED_AT
+                    c.$COLUMN_UPDATED_AT,
+                    c.$COLUMN_MEMORY_MODE
                 FROM $TABLE_CONVERSATIONS c
                 LEFT JOIN $TABLE_MESSAGES m
                     ON c.$COLUMN_ID = m.$COLUMN_CONVERSATION_ID
@@ -116,12 +139,76 @@ class LocalChatRepository(context: Context) :
                 val idIndex = cursor.getColumnIndexOrThrow(COLUMN_ID)
                 val titleIndex = cursor.getColumnIndexOrThrow(COLUMN_TITLE)
                 val updatedAtIndex = cursor.getColumnIndexOrThrow(COLUMN_UPDATED_AT)
+                val memoryModeIndex = cursor.getColumnIndexOrThrow(COLUMN_MEMORY_MODE)
                 while (cursor.moveToNext()) {
                     add(
                         Conversation(
                             id = cursor.getLong(idIndex),
                             title = cursor.getString(titleIndex),
                             updatedAt = cursor.getLong(updatedAtIndex),
+                            memoryMode = ConversationMemoryMode.fromName(
+                                cursor.getString(memoryModeIndex),
+                            ),
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    override fun getConversation(conversationId: Long): Conversation? {
+        return readableDatabase.query(
+            TABLE_CONVERSATIONS,
+            arrayOf(COLUMN_ID, COLUMN_TITLE, COLUMN_UPDATED_AT, COLUMN_MEMORY_MODE),
+            "$COLUMN_ID = ?",
+            arrayOf(conversationId.toString()),
+            null,
+            null,
+            null,
+            "1",
+        ).use { cursor ->
+            if (!cursor.moveToFirst()) return@use null
+            Conversation(
+                id = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_ID)),
+                title = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TITLE)),
+                updatedAt = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_UPDATED_AT)),
+                memoryMode = ConversationMemoryMode.fromName(
+                    cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MEMORY_MODE)),
+                ),
+            )
+        }
+    }
+
+    override fun getGlobalMemoryMessages(excludeConversationId: Long): List<ChatMessage> {
+        // 只汇总「全局对话」会话的消息；单独对话的数据保持隔离。
+        val sql = """
+            SELECT m.$COLUMN_ID, m.$COLUMN_CONVERSATION_ID, m.$COLUMN_ROLE,
+                   m.$COLUMN_CONTENT, m.$COLUMN_CREATED_AT
+            FROM $TABLE_MESSAGES m
+            INNER JOIN $TABLE_CONVERSATIONS c
+                ON m.$COLUMN_CONVERSATION_ID = c.$COLUMN_ID
+            WHERE c.$COLUMN_MEMORY_MODE = ?
+              AND m.$COLUMN_CONVERSATION_ID <> ?
+            ORDER BY m.$COLUMN_CREATED_AT ASC, m.$COLUMN_ID ASC
+        """.trimIndent()
+        return readableDatabase.rawQuery(
+            sql,
+            arrayOf(ConversationMemoryMode.GLOBAL.name, excludeConversationId.toString()),
+        ).use { cursor ->
+            buildList {
+                val idIndex = cursor.getColumnIndexOrThrow(COLUMN_ID)
+                val conversationIndex = cursor.getColumnIndexOrThrow(COLUMN_CONVERSATION_ID)
+                val roleIndex = cursor.getColumnIndexOrThrow(COLUMN_ROLE)
+                val contentIndex = cursor.getColumnIndexOrThrow(COLUMN_CONTENT)
+                val createdAtIndex = cursor.getColumnIndexOrThrow(COLUMN_CREATED_AT)
+                while (cursor.moveToNext()) {
+                    add(
+                        ChatMessage(
+                            id = cursor.getLong(idIndex),
+                            conversationId = cursor.getLong(conversationIndex),
+                            role = MessageRole.valueOf(cursor.getString(roleIndex)),
+                            content = cursor.getString(contentIndex),
+                            createdAt = cursor.getLong(createdAtIndex),
                         ),
                     )
                 }
@@ -199,6 +286,67 @@ class LocalChatRepository(context: Context) :
         )
     }
 
+    override fun deleteMessage(messageId: Long) {
+        // 先取所属会话，删除后把该会话的排序时间刷新为当前时间。
+        val conversationId = readableDatabase.query(
+            TABLE_MESSAGES,
+            arrayOf(COLUMN_CONVERSATION_ID),
+            "$COLUMN_ID = ?",
+            arrayOf(messageId.toString()),
+            null,
+            null,
+            null,
+            "1",
+        ).use { cursor ->
+            if (cursor.moveToFirst()) {
+                cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_CONVERSATION_ID))
+            } else {
+                null
+            }
+        }
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.delete(TABLE_MESSAGES, "$COLUMN_ID = ?", arrayOf(messageId.toString()))
+            if (conversationId != null) {
+                db.update(
+                    TABLE_CONVERSATIONS,
+                    ContentValues().apply { put(COLUMN_UPDATED_AT, System.currentTimeMillis()) },
+                    "$COLUMN_ID = ?",
+                    arrayOf(conversationId.toString()),
+                )
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    override fun deleteMessagesAfter(messageId: Long) {
+        // 同会话内主键 id 单调递增，用 id 比较即可精确截断到该消息为止。
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.execSQL(
+                "DELETE FROM $TABLE_MESSAGES WHERE " +
+                    "$COLUMN_CONVERSATION_ID = " +
+                    "(SELECT $COLUMN_CONVERSATION_ID FROM $TABLE_MESSAGES WHERE $COLUMN_ID = ?) " +
+                    "AND $COLUMN_ID > ?",
+                arrayOf(messageId.toString(), messageId.toString()),
+            )
+            db.update(
+                TABLE_CONVERSATIONS,
+                ContentValues().apply { put(COLUMN_UPDATED_AT, System.currentTimeMillis()) },
+                "$COLUMN_ID = " +
+                    "(SELECT $COLUMN_CONVERSATION_ID FROM $TABLE_MESSAGES WHERE $COLUMN_ID = ?)",
+                arrayOf(messageId.toString()),
+            )
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
     override fun finalizeInterruptedThinking() {
         writableDatabase.update(
             TABLE_MESSAGES,
@@ -268,7 +416,7 @@ class LocalChatRepository(context: Context) :
 
     companion object {
         private const val DATABASE_NAME = "chatyue.db"
-        private const val DATABASE_VERSION = 1
+        private const val DATABASE_VERSION = 2
         private const val SUMMARY_CREATED_AT = 1L
 
         private const val TABLE_CONVERSATIONS = "conversations"
@@ -276,6 +424,7 @@ class LocalChatRepository(context: Context) :
         private const val COLUMN_ID = "id"
         private const val COLUMN_TITLE = "title"
         private const val COLUMN_UPDATED_AT = "updated_at"
+        private const val COLUMN_MEMORY_MODE = "memory_mode"
         private const val COLUMN_CONVERSATION_ID = "conversation_id"
         private const val COLUMN_ROLE = "role"
         private const val COLUMN_CONTENT = "content"

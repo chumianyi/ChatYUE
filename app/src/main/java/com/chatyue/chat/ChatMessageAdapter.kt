@@ -23,6 +23,7 @@ enum class MessageAction {
 class ChatMessageAdapter(
     private val markwon: Markwon,
     private val onAction: (MessageAction, ChatMessage) -> Unit,
+    private val onLongPress: (ChatMessage, View) -> Unit,
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private val messages = mutableListOf<ChatMessage>()
     private val collapsedThinkingIds = mutableSetOf<Long>()
@@ -56,6 +57,7 @@ class ChatMessageAdapter(
             VIEW_TYPE_USER -> {
                 UserMessageViewHolder(
                     ItemMessageUserBinding.inflate(inflater, parent, false),
+                    onLongPress,
                 )
             }
 
@@ -78,6 +80,7 @@ class ChatMessageAdapter(
                     ItemMessageAssistantBinding.inflate(inflater, parent, false),
                     markwon,
                     onAction,
+                    onLongPress,
                 )
             }
         }
@@ -208,9 +211,14 @@ class ChatMessageAdapter(
 
     private class UserMessageViewHolder(
         private val binding: ItemMessageUserBinding,
+        private val onLongPress: (ChatMessage, View) -> Unit,
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind(message: ChatMessage) {
             binding.messageText.text = message.content
+            binding.root.setOnLongClickListener {
+                onLongPress(message, binding.messageText)
+                true
+            }
         }
     }
 
@@ -218,6 +226,7 @@ class ChatMessageAdapter(
         private val binding: ItemMessageAssistantBinding,
         private val markwon: Markwon,
         private val onAction: (MessageAction, ChatMessage) -> Unit,
+        private val onLongPress: (ChatMessage, View) -> Unit,
     ) : RecyclerView.ViewHolder(binding.root) {
         private var current: ChatMessage? = null
 
@@ -227,6 +236,11 @@ class ChatMessageAdapter(
         }
 
         init {
+            binding.root.setOnLongClickListener {
+                val message = current ?: return@setOnLongClickListener false
+                onLongPress(message, binding.messageActions)
+                true
+            }
             binding.copyButton.setOnClickListener {
                 val message = current ?: return@setOnClickListener
                 onAction(MessageAction.COPY, message)

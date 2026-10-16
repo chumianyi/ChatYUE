@@ -71,6 +71,7 @@
     <string name="clear_history_title">清空全部对话？</string>
     <string name="clear_history_message">此操作会删除设备上保存的全部对话和消息。</string>
     <string name="cancel">取消</string>
+    <string name="ok">知道了</string>
     <string name="clear">清空</string>
     <string name="section_today">今天</string>
     <string name="section_yesterday">昨天</string>
@@ -170,4 +171,104 @@
     <string name="action_copy_done">已复制</string>
     <string name="action_like_done">感谢你的认可</string>
     <string name="action_dislike_done">已记录你的反馈</string>
+    <string name="action_regenerate">重新生成</string>
+    <string name="action_delete">删除</string>
+    <string name="action_delete_done">已删除</string>
+    <string name="action_regenerate_started">正在重新生成回答</string>
+    <string name="message_longpress_title">消息操作</string>
+    <string name="confirm_delete_message_title">删除这条消息？</string>
+    <string name="confirm_delete_message">删除后无法恢复，确定要删除这条消息吗？</string>
+    <string name="confirm_delete_positive">删除</string>
+    <string name="regenerate_no_user_message">没有找到可重新生成的提问</string>
+    <!-- 启动画面（2.0） -->
+    <string name="splash_title">ChatYUE</string>
+    <string name="splash_subtitle">给你更好的体验</string>
+
+    <!-- OOBE 首次引导（2.0） -->
+    <string name="oobe_greeting">你好</string>
+    <string name="oobe_preparing">我们正在为您准备中</string>
+    <string name="oobe_config_title">你可以配置你的客户端</string>
+    <string name="oobe_ui_scale">界面放大</string>
+    <string name="oobe_ui_scale_summary">开启后字体与控件整体放大</string>
+    <string name="oobe_splash_switch">启动动画</string>
+    <string name="oobe_splash_switch_summary">关闭后启动时直接进入主界面</string>
+    <string name="oobe_confirm">确认</string>
+    <string name="oobe_finishing">不要着急，很快就好</string>
+
+    <!-- 强制版本更新（2.0） -->
+    <string name="force_update_title">需要更新</string>
+    <string name="force_update_message">当前版本（versionCode %1$s）已不再受支持。\n请升级到 %2$s 后继续使用。</string>
+    <string name="force_update_action">立即升级</string>
+
+    <!-- 对话记忆模式（2.0） -->
+    <string name="memory_mode_title">选择对话模式</string>
+    <string name="memory_mode_global">全局对话</string>
+    <string name="memory_mode_global_desc">与所有历史会话互通，共享全域记忆</string>
+    <string name="memory_mode_isolated">单独对话</string>
+    <string name="memory_mode_isolated_desc">独立隔离运行，不参与全局记忆</string>
+    <string name="memory_mode_dialog_title">选择对话模式</string>
+    <string name="memory_mode_global_title">全局对话</string>
+    <string name="memory_mode_global_summary">与所有历史会话互通</string>
+    <string name="memory_mode_isolated_title">单独对话</string>
+    <string name="memory_mode_isolated_summary">独立隔离，不全局互通</string>
+    <string name="memory_mode_dialog_cancel">取消</string>
+
+    <!-- 推理模式（2.0） -->
+    <string name="mode_thinking">思考</string>
+    <string name="mode_fast">快速</string>
+    <string name="mode_switch_to_thinking">已切换到思考模式</string>
+    <string name="mode_switch_to_fast">已切换到快速模式</string>
+    <string name="mode_switch_title">选择推理模式</string>
+    <string name="mode_switched">已切换到「%1$s」模式</string>
+    <string name="mode_thinking_model">思考 · GLM-4.1V-Thinking-Flash</string>
+    <string name="mode_fast_model">快速 · glm-4.7-flash</string>
+
+    <!-- 设置（2.0） -->
+    <string name="menu_settings">设置</string>
+    <string name="settings_title">设置</string>
+    <string name="settings_section_appearance">外观</string>
+    <string name="settings_section_data">数据</string>
+    <string name="settings_section_about">关于</string>
+    <string name="settings_ui_scale">界面尺寸</string>
+    <string name="settings_ui_scale_summary">三档尺寸随时切换，立即全界面生效</string>
+    <string name="settings_splash">启动动画</string>
+    <string name="settings_splash_summary">关闭后启动应用直接进入，不再展示开场动画</string>
+    <string name="settings_background">全局背景</string>
+    <string name="settings_background_summary">浅色预设或自定义图片，全局生效</string>
+    <string name="settings_background_summary_image">自定义图片</string>
+    <string name="settings_data">数据管理</string>
+    <string name="settings_data_summary">导出与导入备份，换机不丢数据</string>
+    <string name="settings_mode">默认推理模式</string>
+    <string name="settings_mode_summary">新对话使用的默认模式，可随时在对话页切换</string>
+    <string name="settings_mode_summary_format">当前：%1$s</string>
+    <string name="menu_licenses">开源许可证</string>
+
+    <!-- 全局背景（2.0） -->
+    <string name="background_title">全局背景</string>
+    <string name="background_preview">当前效果</string>
+    <string name="background_preset_section">浅色预设</string>
+    <string name="background_image_section">自定义图片</string>
+    <string name="background_pick_image">选择本地图片</string>
+    <string name="background_remove_image">移除自定义背景</string>
+    <string name="background_removed">已恢复为纯色背景</string>
+    <string name="background_image_applied">已应用自定义背景</string>
+    <string name="background_image_active">自定义背景生效中</string>
+    <string name="background_import_failed">图片导入失败，请重试</string>
+    <string name="background_no_image">尚未选择图片</string>
+    <string name="background_note">背景会应用到全局所有界面；图片同时保存在设备公共存储 Pictures/ChatYUE 下，重启与升级都不会丢失。</string>
+
+    <!-- 数据管理（2.0） -->
+    <string name="data_title">数据管理</string>
+    <string name="data_export">导出数据</string>
+    <string name="data_export_desc">备份对话、配置、背景与模型偏好</string>
+    <string name="data_import">导入数据</string>
+    <string name="data_import_desc">从备份文件一键恢复</string>
+    <string name="data_export_ok">已导出到：%1$s</string>
+    <string name="data_export_failed">导出失败：%1$s</string>
+    <string name="data_import_ok">导入完成，请重新打开应用</string>
+    <string name="data_import_failed">导入失败：%1$s</string>
+    <string name="data_import_confirm_title">确认导入</string>
+    <string name="data_import_confirm_message">导入会覆盖当前的全部对话与配置，是否继续？</string>
+    <string name="data_import_confirm_action">继续导入</string>
+    <string name="data_note">导出内容包含全部对话记录、个性化配置、自定义背景、模型偏好与使用记录。</string>
 </resources>

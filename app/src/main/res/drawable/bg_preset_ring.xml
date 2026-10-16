@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 背景预设选中描边：纯描边无填充，通过 alpha 控制显隐 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#00000000" />
+    <stroke
+        android:width="3dp"
+        android:color="@color/ds_blue" />
+    <corners android:radius="10dp" />
+</shape>

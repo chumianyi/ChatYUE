@@ -293,7 +293,8 @@ class DeepSeekChatBackend(
 
     private fun createRequestBody(request: ChatRequest) =
         JSONObject().apply {
-            put("model", FixedEndpoint.MODEL)
+            // 2.0 双模型双模式：由请求携带的模式决定具体模型，一对一绑定。
+            put("model", ModelCatalog.modelFor(request.mode))
             put("stream", true)
             put(
                 "messages",

@@ -13,6 +13,14 @@ data class RemoteConfig(
     val agreementUrl: String,
     val privacyUrl: String,
     val changelog: List<ChangelogEntry>,
+    /**
+     * 2.0 新增：最低可运行的版本号。
+     *
+     * 当客户端 versionCode 低于该值时，属于「强制淘汰版本」，
+     * 应用会弹出不可关闭的强制升级弹窗并锁定全部操作。
+     * 高于或等于该值则视为兼容旧版本，可正常完整使用。
+     */
+    val minSupportedVersionCode: Int,
 ) {
     companion object {
         /** 页面基址（GitHub Pages）。 */

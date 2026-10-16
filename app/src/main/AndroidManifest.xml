@@ -7,8 +7,12 @@
     <!-- 选择相册图片需要读取设备中的图片（Android 13+ 使用细分权限） -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission
-        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:name="READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
+    <!-- 旧系统（API 28 及以下）导出数据、写入公共图片目录需要写权限 -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
 
     <application
         android:allowBackup="true"
@@ -24,15 +28,41 @@
         tools:targetApi="24">
 
         <activity
-            android:name=".MainActivity"
+            android:name=".SplashActivity"
             android:exported="true"
-            android:windowSoftInputMode="adjustResize">
+            android:theme="@style/Theme.ChatYUE.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".OobeActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.ChatYUE.Oobe" />
+
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ChatYUE.Tool" />
+
+        <activity
+            android:name=".BackgroundActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ChatYUE.Tool" />
+
+        <activity
+            android:name=".DataManagerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ChatYUE.Tool" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".AgreementActivity"

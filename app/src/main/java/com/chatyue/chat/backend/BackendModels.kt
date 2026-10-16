@@ -3,12 +3,13 @@ package com.chatyue.chat.backend
 /**
  * 一次聊天请求。
  *
- * 注意：模型、接口地址、密钥均为全局固定值（见 [FixedEndpoint]），
- * 且应用只有"思考模式"一种模式，因此这里不再暴露任何可切换参数。
+ * 注意：模型、接口地址、密钥均为全局固定值（见 [FixedEndpoint]）。
+ * 2.0 起为双模型双模式，[mode] 决定使用哪个模型（见 [ModelCatalog]）。
  */
 data class ChatRequest(
     val conversationId: String?,
     val messages: List<BackendMessage>,
+    val mode: ChatMode = ChatMode.THINKING,
 )
 
 data class BackendMessage(

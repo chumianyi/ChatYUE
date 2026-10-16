@@ -9,11 +9,11 @@ import kotlin.math.roundToInt
  * - 中文（含中日韩统一表意文字与全角标点）：每字符 1.5 token
  * - 英文及其他字符：每字符 0.25 token
  *
- * 上限固定为 128K，达到 [COMPRESS_THRESHOLD_PERCENT] 时触发自动压缩。
+ * 2.0 起单会话上下文上限扩容至 1M，达到 [COMPRESS_THRESHOLD_PERCENT] 时触发自动压缩。
  */
 object ContextBudget {
-    /** 上下文上限：128K。 */
-    const val MAX_TOKENS: Double = 128.0 * 1024.0
+    /** 上下文上限：1M（2.0 起由 128K 扩容）。 */
+    const val MAX_TOKENS: Double = 1024.0 * 1024.0
 
     /** 触发自动压缩的百分比阈值。 */
     const val COMPRESS_THRESHOLD_PERCENT: Int = 85

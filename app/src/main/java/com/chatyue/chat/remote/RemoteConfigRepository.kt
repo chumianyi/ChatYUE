@@ -28,6 +28,14 @@ object RemoteConfigRepository {
         return loadBundled(context)
     }
 
+    /**
+     * 只请求线上配置，失败返回 null（不回退内置副本）。
+     *
+     * 2.0 的强制版本检测必须基于真实的线上数据判断，
+     * 否则离线时用内置副本会得出错误结论。
+     */
+    fun loadOnline(): RemoteConfig? = runCatching { loadRemote() }.getOrNull()
+
     private fun loadRemote(): RemoteConfig {
         val request = Request.Builder()
             .url(RemoteConfig.START_JSON_URL)
@@ -59,6 +67,7 @@ object RemoteConfigRepository {
             privacyUrl = json.optString("privacyUrl")
                 .ifBlank { RemoteConfig.PRIVACY_URL },
             changelog = parseChangelog(json.optJSONArray("changelog")),
+            minSupportedVersionCode = json.optInt("minSupportedVersionCode", 0),
         )
     }
 

@@ -1,11 +1,27 @@
 {
-  "versionName": "1.4.2",
-  "versionCode": 10,
-  "releaseDate": "2026-10-15",
+  "versionName": "2.0.0",
+  "versionCode": 20,
+  "releaseDate": "2026-10-16",
   "downloadUrl": "https://github.com/chumianyi/ChatYUE/releases/latest",
   "agreementUrl": "https://chumianyi.github.io/ChatYUE/agreement.html",
   "privacyUrl": "https://chumianyi.github.io/ChatYUE/privacy.html",
+  "minSupportedVersionCode": 20,
   "changelog": [
+    {
+      "versionName": "2.0.0",
+      "releaseDate": "2026-10-16",
+      "items": [
+        "全新强制版本更新检测：每次启动自动静默校验；断网时自动进入监听，恢复联网立即补检；低于极限版本的客户端弹出不可关闭的强制升级弹窗并锁定全部操作",
+        "全新启动画面：纯白背景 + 全新二次元官方形象 + 「ChatYUE / 给你更好的体验」双层文字 + 官方 AI 图标，固定展示 3 秒",
+        "新增首次开机引导（OOBE）：Windows 风格动态渐变背景 + 分阶段文字动画，可配置界面尺寸与启动动画，仅首次安装展示一次",
+        "全面开放全局背景自定义：内置多种低饱和浅色预设与自定义图片，图片保存到公共目录 Pictures/ChatYUE，重启与更新均不丢失",
+        "新增数据管理：支持导出 / 导入对话、个性化配置、自定义背景、模型偏好等数据，覆盖前二次确认",
+        "重磅升级全局智能记忆：跨会话、跨重启、跨进程全域记忆，AI 可完整记忆所有会话内容；单会话上下文扩容至 1M",
+        "新建会话可选择「全局对话 / 单独对话」两种记忆模式，自由切换、独立生效",
+        "核心模型调度重构：下架 R1，默认思考模式绑定 GLM-4.1V-Thinking-Flash，新增快速模式绑定 glm-4.7-flash，支持一键切换",
+        "消息新增「重新生成」与「删除」：长按消息气泡即可重新生成回答或删除单条消息"
+      ]
+    },
     {
       "versionName": "1.4.2",
       "releaseDate": "2026-10-15",
@@ -40,7 +56,7 @@
       "items": [
         "应用更名为 ChatYUE：应用名、包名、主题、存储与工程名全部同步更新",
         "全新应用图标：替换掉原有的全部 DeepSeek 鲸鱼图形，含 5 档密度图标、圆形图标、Android 8+ 自适应图标与 Android 13 主题图标",
-        "关于页面最下方新增「许可证」按钮，可查看本项目与全部第三方开源组件的完整许可证全文",
+        "关于页面最方新增「许可证」按钮，可查看本项目与全部第三方开源组件的完整许可证全文",
         "界面与交互保持 1.2.0 原样，未改动布局与主题"
       ]
     },
