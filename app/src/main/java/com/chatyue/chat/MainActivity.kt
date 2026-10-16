@@ -14,12 +14,14 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.PopupMenu
 import android.widget.Toast
+import java.io.File
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.core.content.getSystemService
 import androidx.core.view.GravityCompat
 import androidx.core.view.ViewCompat
@@ -951,7 +953,8 @@ class MainActivity : AppCompatActivity() {
         PopupMenu(this, anchor).apply {
             menu.add(0, MENU_CONV_PIN, 0, pinLabel)
             menu.add(0, MENU_CONV_RENAME, 1, R.string.action_rename_conversation)
-            menu.add(0, MENU_CONV_DELETE, 2, R.string.action_delete_conversation)
+            menu.add(0, MENU_CONV_EXPORT, 2, R.string.action_export_conversation)
+            menu.add(0, MENU_CONV_DELETE, 3, R.string.action_delete_conversation)
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     MENU_CONV_PIN -> {
@@ -961,6 +964,11 @@ class MainActivity : AppCompatActivity() {
 
                     MENU_CONV_RENAME -> {
                         showRenameDialog(conversation)
+                        true
+                    }
+
+                    MENU_CONV_EXPORT -> {
+                        exportConversation(conversation.id)
                         true
                     }
 
@@ -1038,6 +1046,7 @@ class MainActivity : AppCompatActivity() {
             menu.add(0, MENU_ABOUT, 3, R.string.about_menu)
             menu.add(0, MENU_CLEAR_HISTORY, 4, R.string.clear_history)
             menu.add(0, MENU_SEARCH_MESSAGES, 5, R.string.menu_search_messages)
+            menu.add(0, MENU_EXPORT_CONVERSATION, 6, R.string.menu_export_conversation)
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     MENU_CHANGELOG -> {
@@ -1069,6 +1078,11 @@ class MainActivity : AppCompatActivity() {
                         searchLauncher.launch(
                             Intent(this@MainActivity, MessageSearchActivity::class.java),
                         )
+                        true
+                    }
+
+                    MENU_EXPORT_CONVERSATION -> {
+                        exportCurrentConversation()
                         true
                     }
 
@@ -1437,6 +1451,60 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // ---------------- 会话导出 ----------------
+
+    /** 导出当前正在查看的会话。 */
+    private fun exportCurrentConversation() {
+        val conversationId = currentConversationId ?: run {
+            CompatToast.show(this, R.string.export_no_conversation)
+            return
+        }
+        exportConversation(conversationId)
+    }
+
+    /**
+     * 把指定会话渲染成 Markdown，写入缓存后调起系统分享。
+     *
+     * 落盘走 IO 线程，分享面板回主线程拉起。
+     */
+    private fun exportConversation(conversationId: Long) {
+        val conversation = repository.getConversation(conversationId) ?: return
+        val messages = repository.getMessages(conversationId)
+        val hasExportable = messages.any {
+            it.role == MessageRole.USER ||
+                it.role == MessageRole.ASSISTANT ||
+                it.role == MessageRole.SYSTEM
+        }
+        if (!hasExportable) {
+            CompatToast.show(this, R.string.export_empty_conversation)
+            return
+        }
+        val markdown = ConversationExporter.toMarkdown(conversation, messages)
+        val fileName = ConversationExporter.fileNameFor(conversation, "md")
+        ioExecutor.execute {
+            val file = ConversationExportWriter.write(this, fileName, markdown)
+            runOnUiThread {
+                shareExportFile(file, conversation.title)
+            }
+        }
+    }
+
+    /** 通过 FileProvider 把导出稿分享给其他应用。 */
+    private fun shareExportFile(file: File, title: String) {
+        val uri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", file)
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_TITLE, title)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        try {
+            startActivity(Intent.createChooser(intent, getString(R.string.export_share_title)))
+        } catch (_: ActivityNotFoundException) {
+            CompatToast.show(this, R.string.export_no_share_app)
+        }
+    }
+
     // ---------------- 状态与提示 ----------------
 
     private fun stopGeneration(showNotice: Boolean) {
@@ -1552,8 +1620,10 @@ class MainActivity : AppCompatActivity() {
         private const val MENU_MULTI_SELECT_ITEM = 104
         private const val MENU_CONV_PIN = 200
         private const val MENU_CONV_RENAME = 201
+        private const val MENU_CONV_EXPORT = 203
         private const val MENU_CONV_DELETE = 202
         private const val MENU_SEARCH_MESSAGES = 6
+        private const val MENU_EXPORT_CONVERSATION = 7
         private const val STREAM_THINKING_ID = -1L
         private const val STREAM_ASSISTANT_ID = -2L
 

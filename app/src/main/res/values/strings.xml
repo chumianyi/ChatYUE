@@ -196,6 +196,12 @@
     <string name="confirm_delete_conversation">该会话及其全部消息将被删除，且无法恢复，确定继续吗？</string>
     <string name="rename_empty_title">标题不能为空</string>
     <string name="menu_search_messages">搜索消息</string>
+    <string name="menu_export_conversation">导出会话</string>
+    <string name="action_export_conversation">导出会话</string>
+    <string name="export_share_title">分享会话记录</string>
+    <string name="export_no_conversation">当前没有可导出的会话</string>
+    <string name="export_empty_conversation">该会话暂无可导出的消息</string>
+    <string name="export_no_share_app">没有找到可以分享的应用</string>
     <string name="message_search_title">搜索消息</string>
     <string name="message_search_hint">在所有会话中搜索内容</string>
     <string name="message_search_empty">输入关键词，搜索全部历史消息</string>

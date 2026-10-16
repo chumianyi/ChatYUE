@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  FileProvider 路径配置：仅开放应用缓存下的 exports 目录，
+  用于把导出的 Markdown / TXT 会话稿分享给其他应用。
+-->
+<paths>
+    <cache-path
+        name="exports"
+        path="exports/" />
+</paths>

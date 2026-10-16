@@ -112,6 +112,16 @@
             android:theme="@style/Theme.ChatYUE.Tool"
             android:windowSoftInputMode="adjustResize" />
 
+        <!-- 会话导出稿分享：仅暴露缓存 exports 目录，外部应用只读。 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
     </application>
 
