@@ -26,21 +26,21 @@ class ContextBudgetTest {
     }
 
     @Test
-    fun limitIs128K() {
-        assertEquals(128.0 * 1024.0, ContextBudget.MAX_TOKENS, 0.000001)
+    fun limitIsOneMillion() {
+        assertEquals(1024.0 * 1024.0, ContextBudget.MAX_TOKENS, 0.000001)
         assertEquals(85, ContextBudget.COMPRESS_THRESHOLD_PERCENT)
     }
 
     @Test
     fun percentIsRoundedToWholeNumber() {
-        // 74275 个汉字 = 111412.5 token，约占 128K 的 85.00%
+        // 594193 个汉字 = 891289.5 token，约占 1M 的 85.00%
         val message = messageOf(CJK_CHARS_FOR_85_PERCENT)
         assertEquals(85, ContextBudget.percentOf(listOf(message)))
     }
 
     @Test
     fun compressionTriggersAtEightyFivePercent() {
-        val below = messageOf(CJK_CHARS_FOR_85_PERCENT - 1000)
+        val below = messageOf(CJK_CHARS_BELOW_THRESHOLD)
         val reached = messageOf(CJK_CHARS_FOR_85_PERCENT)
         assertFalse(ContextBudget.needsCompression(listOf(below)))
         assertTrue(ContextBudget.needsCompression(listOf(reached)))
@@ -74,7 +74,10 @@ class ContextBudgetTest {
     }
 
     private companion object {
-        /** 74275 个汉字 ≈ 111412.5 token ≈ 128K 的 85%。 */
-        private const val CJK_CHARS_FOR_85_PERCENT = 74275
+        /** 594193 个汉字 ≈ 891289.5 token ≈ 1M（1048576）的 85%。 */
+        private const val CJK_CHARS_FOR_85_PERCENT = 594193
+
+        /** 589193 个汉字 ≈ 883789.5 token ≈ 1M 的 84.3%，明确低于压缩阈值。 */
+        private const val CJK_CHARS_BELOW_THRESHOLD = 589193
     }
 }
