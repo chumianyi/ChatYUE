@@ -17,6 +17,7 @@ object AppConfig {
     private const val KEY_SPLASH_ENABLED = "splash_enabled"
     private const val KEY_CHAT_MODE = "chat_mode"
     private const val KEY_SPEECH_RATE = "speech_rate"
+    private const val KEY_AUTO_SPEAK = "auto_speak"
     private const val KEY_OOBE_COMPLETED = "oobe_completed"
 
     /** UI 尺寸档位。 */
@@ -79,6 +80,16 @@ object AppConfig {
 
     fun setSpeechRate(context: Context, rate: SpeechRate) {
         prefs(context).edit().putString(KEY_SPEECH_RATE, rate.name).apply()
+    }
+
+    // ---------------- 自动朗读 ----------------
+
+    /** 生成完成后是否自动朗读最新回复，默认关闭（用户手动点喇叭）。 */
+    fun isAutoSpeakEnabled(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_AUTO_SPEAK, false)
+
+    fun setAutoSpeakEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_AUTO_SPEAK, enabled).apply()
     }
 
     // ---------------- 运行时模式偏好 ----------------

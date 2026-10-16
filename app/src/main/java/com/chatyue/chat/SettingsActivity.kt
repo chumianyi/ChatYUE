@@ -35,6 +35,11 @@ class SettingsActivity : AppCompatActivity() {
             AppConfig.setSplashEnabled(this, checked)
         }
 
+        binding.autoSpeakSwitch.isChecked = AppConfig.isAutoSpeakEnabled(this)
+        binding.autoSpeakSwitch.setOnCheckedChangeListener { _, checked ->
+            AppConfig.setAutoSpeakEnabled(this, checked)
+        }
+
         binding.backgroundRow.setOnClickListener {
             startActivity(Intent(this, BackgroundActivity::class.java))
         }

@@ -349,6 +349,8 @@
     <string name="settings_mode_summary_format">当前：%1$s</string>
     <string name="settings_speech_rate">朗读语速</string>
     <string name="settings_speech_rate_summary">点击消息上的喇叭朗读时使用的语速</string>
+    <string name="settings_auto_speak">自动朗读回复</string>
+    <string name="settings_auto_speak_summary">生成完成后自动读出最新回复，可随时再点喇叭停止</string>
     <string name="menu_licenses">开源许可证</string>
 
     <!-- 全局背景（2.0） -->

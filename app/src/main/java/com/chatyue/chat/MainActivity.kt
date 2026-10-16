@@ -675,6 +675,15 @@ class MainActivity : AppCompatActivity() {
                             ?.title
                             .orEmpty()
                         generationNotifications.show(title, state.message.content)
+                    } else if (
+                        AppConfig.isAutoSpeakEnabled(this) &&
+                        currentConversationId == state.conversationId &&
+                        !messageAdapter.isSelectionMode()
+                    ) {
+                        // 自动朗读：只读当前会话刚生成的这条回复，与通知二选一。
+                        repository.getMessages(state.conversationId)
+                            .lastOrNull { it.role == MessageRole.ASSISTANT }
+                            ?.let { toggleSpeak(it) }
                     }
                     viewModel.acknowledgeTerminal(state.eventId)
                 }
