@@ -27,6 +27,18 @@
     <string name="context_compressing">上下文已达 %1$d%%，正在自动压缩…</string>
     <string name="context_compressed">上下文已压缩至 %1$d%%</string>
     <string name="context_compress_failed">上下文压缩失败：%1$s</string>
+    <string name="context_panel_title">上下文管理</string>
+    <string name="context_panel_used_tokens">已用 %1$s / %2$s tokens，剩余 %3$s</string>
+    <string name="context_panel_message_count">消息</string>
+    <string name="context_panel_summary_count">摘要</string>
+    <string name="context_panel_character_count">字符</string>
+    <string name="context_panel_auto_compress">用量达到 85% 时会自动把前半段对话压缩成摘要，控制 token 占用；也可以随时手动压缩。</string>
+    <string name="context_panel_hint_threshold">已达自动压缩阈值，下一次提问后将把前半段对话压缩成摘要。</string>
+    <string name="context_panel_compress_now">立即压缩历史</string>
+    <string name="context_panel_compressing">正在压缩，请稍候…</string>
+    <string name="context_panel_nothing_to_compress">当前上下文消息太少，暂无需压缩。</string>
+    <string name="context_panel_no_conversation">先开始一段对话，再来管理上下文。</string>
+    <string name="context_panel_done">关闭</string>
     <string name="summary_title">上下文摘要（已自动压缩）</string>
 
     <!-- 侧边栏功能 -->

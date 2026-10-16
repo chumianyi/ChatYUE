@@ -73,6 +73,47 @@ class ContextBudgetTest {
         )
     }
 
+    @Test
+    fun snapshot_countsOnlyContextMessages() {
+        fun message(id: Long, role: MessageRole, content: String) = ChatMessage(
+            id = id,
+            conversationId = 1,
+            role = role,
+            content = content,
+            createdAt = 1,
+        )
+        val thinkingMsg = message(1, MessageRole.THINKING_FINISHED, "思考")
+        val user = message(3, MessageRole.USER, "你好")
+        val assistant = message(4, MessageRole.ASSISTANT, "在的")
+        val summary = message(5, MessageRole.SYSTEM, "摘要")
+        val snapshot = ContextBudget.snapshot(listOf(thinkingMsg, user, assistant, summary))
+
+        // 思考过程不计入；2 条原始消息 + 1 条摘要。
+        assertEquals(2, snapshot.messageCount)
+        assertEquals(1, snapshot.summaryCount)
+        assertEquals("你好在的摘要".length, snapshot.characterCount)
+        assertEquals(
+            ContextBudget.estimateTokens("你好在的摘要"),
+            snapshot.tokens,
+            0.000001,
+        )
+    }
+
+    @Test
+    fun snapshot_remainingTokensNeverNegative() {
+        val empty = messageOf(0)
+        val snapshot = ContextBudget.snapshot(listOf(empty))
+        assertEquals(ContextBudget.MAX_TOKENS, snapshot.remainingTokens, 0.000001)
+    }
+
+    @Test
+    fun snapshot_flagsCompressionThreshold() {
+        val below = messageOf(CJK_CHARS_BELOW_THRESHOLD)
+        val reached = messageOf(CJK_CHARS_FOR_85_PERCENT)
+        assertFalse(ContextBudget.snapshot(listOf(below)).atCompressionThreshold)
+        assertTrue(ContextBudget.snapshot(listOf(reached)).atCompressionThreshold)
+    }
+
     private companion object {
         /** 594193 个汉字 ≈ 891289.5 token ≈ 1M（1048576）的 85%。 */
         private const val CJK_CHARS_FOR_85_PERCENT = 594193

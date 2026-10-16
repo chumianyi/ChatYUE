@@ -100,6 +100,12 @@ class MainActivity : AppCompatActivity() {
     /** 「回到底部」未读计数：逻辑抽成纯类，便于单测。 */
     private val bottomArrivals = BottomArrivalCounter()
 
+    /** 「上下文管理」面板：压缩事件到来时就地刷新。 */
+    private var contextPanelDialog: AlertDialog? = null
+    private var contextPanelBinding: DialogContextPanelBinding? = null
+    private var contextPanelConversationId: Long? = null
+    private var contextPanelCompressing = false
+
     private var pendingImageUri: Uri? = null
     private var pendingImageName: String? = null
     private var pendingTextName: String? = null
@@ -215,6 +221,9 @@ class MainActivity : AppCompatActivity() {
         stopSpeaking(silent = true)
         messageSpeaker?.release()
         messageSpeaker = null
+        contextPanelDialog?.dismiss()
+        contextPanelDialog = null
+        contextPanelBinding = null
         versionGuard?.dismiss()
         versionGuard = null
         ioExecutor.shutdownNow()
@@ -337,6 +346,8 @@ class MainActivity : AppCompatActivity() {
         binding.searchInput.doAfterTextChanged {
             refreshConversationList(it?.toString().orEmpty())
         }
+        // 顶栏上下文 chip 可点击，打开「上下文管理」面板。
+        binding.contextPercent.setOnClickListener { showContextPanel() }
         updateSendButton()
         updateContextIndicator(emptyList())
     }
@@ -598,6 +609,7 @@ class MainActivity : AppCompatActivity() {
                             pendingMessageReloadConversationId = conversationId
                         }
                     }
+                    refreshContextPanel()
                     viewModel.acknowledgeContextEvent()
                 }
 
@@ -607,6 +619,7 @@ class MainActivity : AppCompatActivity() {
                         getString(R.string.context_compress_failed, humanize(event.message)),
                         android.widget.Toast.LENGTH_LONG,
                     )
+                    refreshContextPanel()
                     viewModel.acknowledgeContextEvent()
                 }
             }
@@ -1021,6 +1034,102 @@ class MainActivity : AppCompatActivity() {
                 if (high) R.color.ds_context_warning else R.color.ds_text_secondary,
             ),
         )
+    }
+
+    /**
+     * 顶栏上下文 chip 点击：打开「上下文管理」面板。
+     *
+     * 展示当前会话的 token 用量与消息构成，支持在用量达到阈值前主动压缩历史。
+     */
+    private fun showContextPanel() {
+        val conversationId = currentConversationId
+        if (conversationId == null) {
+            CompatToast.show(this, R.string.context_panel_no_conversation)
+            return
+        }
+        val panelBinding = DialogContextPanelBinding.inflate(layoutInflater)
+        val dialog = AlertDialog.Builder(this)
+            .setView(panelBinding.root)
+            .create()
+        contextPanelDialog?.dismiss()
+        contextPanelDialog = dialog
+        contextPanelBinding = panelBinding
+        contextPanelConversationId = conversationId
+        contextPanelCompressing = false
+
+        panelBinding.contextCompressButton.setOnClickListener {
+            contextPanelCompressing = true
+            updateContextPanelContent(panelBinding, conversationId)
+            viewModel.compressContextNow(conversationId)
+        }
+        panelBinding.contextPanelClose.setOnClickListener { dialog.dismiss() }
+        updateContextPanelContent(panelBinding, conversationId)
+        dialog.show()
+    }
+
+    /** 压缩完成后就地刷新「上下文管理」面板（若还开着且仍是同一会话）。 */
+    private fun refreshContextPanel() {
+        val dialog = contextPanelDialog ?: return
+        if (!dialog.isShowing) return
+        val conversationId = currentConversationId ?: return
+        if (conversationId != contextPanelConversationId) return
+        val binding = contextPanelBinding ?: return
+        contextPanelCompressing = false
+        updateContextPanelContent(binding, conversationId)
+    }
+
+    /** 把当前会话的上下文用量快照填进面板控件。 */
+    private fun updateContextPanelContent(
+        panelBinding: DialogContextPanelBinding,
+        conversationId: Long,
+    ) {
+        val snapshot = ContextBudget.snapshot(repository.getMessages(conversationId))
+        panelBinding.contextUsagePercent.text = getString(R.string.context_usage, snapshot.percent)
+        panelBinding.contextUsageBar.progress = snapshot.percent
+        panelBinding.contextUsageTokens.text = getString(
+            R.string.context_panel_used_tokens,
+            formatContextTokens(snapshot.tokens),
+            formatContextTokens(ContextBudget.MAX_TOKENS),
+            formatContextTokens(snapshot.remainingTokens),
+        )
+        panelBinding.contextMessageCount.text = snapshot.messageCount.toString()
+        panelBinding.contextSummaryCount.text = snapshot.summaryCount.toString()
+        panelBinding.contextCharacterCount.text = formatCharacterCount(snapshot.characterCount)
+        panelBinding.contextPanelHint.text = getString(
+            if (snapshot.atCompressionThreshold) {
+                R.string.context_panel_hint_threshold
+            } else {
+                R.string.context_panel_auto_compress
+            },
+        )
+        val compressible = snapshot.messageCount >= ChatViewModel.MIN_MESSAGES_TO_COMPRESS
+        panelBinding.contextCompressButton.isEnabled =
+            !contextPanelCompressing && compressible
+        panelBinding.contextCompressButton.text = getString(
+            if (contextPanelCompressing) {
+                R.string.context_panel_compressing
+            } else {
+                R.string.context_panel_compress_now
+            },
+        )
+    }
+
+    /** token 数格式化为「万」口径，一万以下按整数。 */
+    private fun formatContextTokens(tokens: Double): String {
+        return if (tokens >= 10_000.0) {
+            String.format("%.1f 万", tokens / 10_000.0)
+        } else {
+            String.format("%.0f", tokens)
+        }
+    }
+
+    /** 字符数格式化为「万」口径。 */
+    private fun formatCharacterCount(count: Int): String {
+        return if (count >= 10_000) {
+            String.format("%.1f 万", count / 10_000.0)
+        } else {
+            count.toString()
+        }
     }
 
     private fun applyPendingMessageUpdate() {

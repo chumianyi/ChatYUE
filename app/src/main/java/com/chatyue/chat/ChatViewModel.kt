@@ -136,11 +136,25 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
      * 并用这条摘要替换掉被压缩的原始消息。
      */
     private fun maybeCompressContext(conversationId: Long) {
+        val messages = repository.getMessages(conversationId)
+        if (!ContextBudget.needsCompression(messages)) return
+        compressContextIfPossible(conversationId)
+    }
+
+    /**
+     * 手动压缩上下文（「上下文管理面板」入口）。
+     *
+     * 与自动压缩的区别：不看阈值，只要上下文消息量足够就压缩，
+     * 让用户在用量还没到 85% 时也能主动瘦身。
+     */
+    fun compressContextNow(conversationId: Long) {
+        compressContextIfPossible(conversationId)
+    }
+
+    private fun compressContextIfPossible(conversationId: Long) {
         if (compressing.get()) return
 
         val messages = repository.getMessages(conversationId)
-        if (!ContextBudget.needsCompression(messages)) return
-
         val compressible = messages.filter { it.role.isContextMessage }
         if (compressible.size < MIN_MESSAGES_TO_COMPRESS) return
         if (lastCompressedConversationId == conversationId &&
@@ -237,7 +251,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     companion object {
-        private const val MIN_MESSAGES_TO_COMPRESS = 6
+        /** 至少这么多条上下文消息才值得压缩（面板按钮的可用性判断也用同一阈值）。 */
+        const val MIN_MESSAGES_TO_COMPRESS = 6
     }
 }
 

@@ -2,6 +2,26 @@ package com.chatyue.chat
 
 import kotlin.math.roundToInt
 
+/** 单会话上下文用量快照。 */
+data class ContextUsageSnapshot(
+    /** 已用百分比（0~100）。 */
+    val percent: Int,
+    /** 已用估算 token 数。 */
+    val tokens: Double,
+    /** 距上限剩余的估算 token 数。 */
+    val remainingTokens: Double,
+    /** 计入上下文的原始消息条数（不含压缩摘要）。 */
+    val messageCount: Int,
+    /** 压缩摘要条数。 */
+    val summaryCount: Int,
+    /** 计入上下文的总字符数。 */
+    val characterCount: Int,
+) {
+    /** 是否已达到自动压缩阈值。 */
+    val atCompressionThreshold: Boolean
+        get() = percent >= ContextBudget.COMPRESS_THRESHOLD_PERCENT
+}
+
 /**
  * 上下文用量估算。
  *
@@ -57,6 +77,27 @@ object ContextBudget {
     fun needsCompression(messages: List<ChatMessage>): Boolean {
         return percentOf(messages) >= COMPRESS_THRESHOLD_PERCENT
     }
+
+    /**
+     * 单会话上下文用量快照，供「上下文管理面板」展示。
+     *
+     * 只统计参与上下文的消息（用户 / 助手 / 压缩摘要），思考过程不计入。
+     */
+    fun snapshot(messages: List<ChatMessage>): ContextUsageSnapshot {
+        val contextMessages = messages.filter { it.role.isContextMessage }
+        val tokens = estimateTokens(contextMessages)
+        return ContextUsageSnapshot(
+            percent = percentOf(tokens),
+            tokens = tokens,
+            remainingTokens = remainingTokens(tokens),
+            messageCount = contextMessages.count { it.role != MessageRole.SYSTEM },
+            summaryCount = contextMessages.count { it.role == MessageRole.SYSTEM },
+            characterCount = contextMessages.sumOf { it.content.length },
+        )
+    }
+
+    /** 距离上限还剩多少估算 token（不会为负）。 */
+    fun remainingTokens(tokens: Double): Double = (MAX_TOKENS - tokens).coerceAtLeast(0.0)
 
     /** 判断字符是否按中文（1.5 token/字）计算。 */
     fun isCjk(char: Char): Boolean {
