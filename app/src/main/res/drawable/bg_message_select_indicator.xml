@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 消息多选指示器：选中(蓝底白勾) / 未选中(空心圆)。 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_activated="true">
+        <layer-list>
+            <item android:drawable="@drawable/shape_circle_blue" />
+            <item
+                android:drawable="@drawable/ic_check_small"
+                android:gravity="center" />
+        </layer-list>
+    </item>
+    <item android:drawable="@drawable/shape_circle_outline" />
+</selector>

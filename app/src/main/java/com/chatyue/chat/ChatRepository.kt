@@ -53,6 +53,13 @@ interface ChatRepository {
     fun deleteMessage(messageId: Long)
 
     /**
+     * 批量删除消息（消息多选管理用）。
+     *
+     * 涉及的每个会话的排序时间都会刷新为当前时间。
+     */
+    fun deleteMessages(messageIds: List<Long>)
+
+    /**
      * 删除给定消息之后（不含该消息本身）的全部消息，用于“重新生成”。
      *
      * 以该消息作为最后一条用户提问，后续由调用方重新发起请求。

@@ -208,6 +208,16 @@
     <string name="reply_bar_to_user">回复 %1$s</string>
     <string name="reply_cancel">取消引用</string>
     <string name="reply_quote_empty">空消息无法引用</string>
+    <!-- 消息多选 -->
+    <string name="action_multi_select">多选</string>
+    <string name="selection_title_count">已选 %1$d 条</string>
+    <string name="selection_select_all">全选</string>
+    <string name="selection_copy_done">已复制 %1$d 条消息</string>
+    <string name="selection_delete_title">删除选中的消息？</string>
+    <string name="selection_delete_message">将删除选中的 %1$d 条消息，删除后无法恢复。</string>
+    <string name="selection_delete_done">已删除 %1$d 条消息</string>
+    <string name="selection_empty">请先选择消息</string>
+    <string name="selection_busy_generating">请先停止生成，再管理消息</string>
     <!-- 启动画面（2.0） -->
     <string name="splash_title">ChatYUE</string>
     <string name="splash_subtitle">给你更好的体验</string>

@@ -88,6 +88,9 @@ class MainActivity : AppCompatActivity() {
     /** 待发送消息引用的目标消息；null 表示不引用。 */
     private var pendingReplyTarget: ChatMessage? = null
 
+    /** 消息多选模式是否激活（顶栏显示多选操作栏）。 */
+    private var messageSelectionActive = false
+
     /** 强制升级守护（2.0）。 */
     private var versionGuard: VersionGuard? = null
 
@@ -212,7 +215,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun configureLists() {
-        messageAdapter = ChatMessageAdapter(Markwon.create(this), ::handleMessageAction, ::handleMessageLongPress)
+        messageAdapter = ChatMessageAdapter(
+            Markwon.create(this),
+            ::handleMessageAction,
+            ::handleMessageLongPress,
+        ) { count ->
+            updateSelectionTitle(count)
+        }
         binding.messageList.apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = messageAdapter
@@ -297,6 +306,18 @@ class MainActivity : AppCompatActivity() {
         binding.replyBarClose.setOnClickListener {
             cancelReply()
         }
+        binding.selectionClose.setOnClickListener {
+            exitMessageSelection()
+        }
+        binding.selectionSelectAll.setOnClickListener {
+            messageAdapter.selectAllSelectable()
+        }
+        binding.selectionCopy.setOnClickListener {
+            copySelectedMessages()
+        }
+        binding.selectionDelete.setOnClickListener {
+            confirmSelectionDelete()
+        }
         binding.toolTranslate.setOnClickListener {
             openTool(TranslationActivity::class.java)
         }
@@ -315,10 +336,13 @@ class MainActivity : AppCompatActivity() {
             this,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) {
-                        binding.drawerLayout.closeDrawer(GravityCompat.START)
-                    } else {
-                        finish()
+                    when {
+                        // 多选模式下返回键先退出多选，不直接退出应用。
+                        messageSelectionActive -> exitMessageSelection()
+                        binding.drawerLayout.isDrawerOpen(GravityCompat.START) ->
+                            binding.drawerLayout.closeDrawer(GravityCompat.START)
+
+                        else -> finish()
                     }
                 }
             },
@@ -666,6 +690,7 @@ class MainActivity : AppCompatActivity() {
         binding.messageInput.text?.clear()
         clearAttachments()
         clearReply()
+        exitMessageSelection()
         showMessages(emptyList())
         hideKeyboard()
         refreshConversationList(binding.searchInput.text?.toString().orEmpty())
@@ -755,6 +780,7 @@ class MainActivity : AppCompatActivity() {
         binding.drawerLayout.closeDrawer(GravityCompat.START)
         refreshConversationList(binding.searchInput.text?.toString().orEmpty())
         clearReply()
+        exitMessageSelection()
     }
 
     private fun loadMessages(
@@ -1159,13 +1185,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** 长按消息气泡：复制 / 引用回复 / 重新生成 / 删除。 */
+    /** 长按消息气泡：复制 / 引用回复 / 多选 / 重新生成 / 删除。 */
     private fun handleMessageLongPress(message: ChatMessage, anchor: View) {
+        // 多选模式下长按不再弹菜单，避免两种交互打架。
+        if (messageAdapter.isSelectionMode()) return
         PopupMenu(this, anchor).apply {
             menu.add(0, MENU_COPY_ITEM, 0, R.string.action_copy)
             menu.add(0, MENU_REPLY_ITEM, 1, R.string.action_reply)
-            menu.add(0, MENU_REGENERATE_ITEM, 2, R.string.action_regenerate)
-            menu.add(0, MENU_DELETE_ITEM, 3, R.string.action_delete)
+            menu.add(0, MENU_MULTI_SELECT_ITEM, 2, R.string.action_multi_select)
+            menu.add(0, MENU_REGENERATE_ITEM, 3, R.string.action_regenerate)
+            menu.add(0, MENU_DELETE_ITEM, 4, R.string.action_delete)
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     MENU_COPY_ITEM -> {
@@ -1175,6 +1204,11 @@ class MainActivity : AppCompatActivity() {
 
                     MENU_REPLY_ITEM -> {
                         startReplyTo(message)
+                        true
+                    }
+
+                    MENU_MULTI_SELECT_ITEM -> {
+                        enterMessageSelection(message)
                         true
                     }
 
@@ -1192,6 +1226,94 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }.show()
+    }
+
+    // ---------------- 消息多选 ----------------
+
+    /** 进入消息多选：显示顶部操作栏，停用输入区，默认选中触发消息。 */
+    private fun enterMessageSelection(message: ChatMessage) {
+        if (isGenerating()) {
+            CompatToast.show(this, R.string.selection_busy_generating)
+            return
+        }
+        messageSelectionActive = true
+        messageAdapter.enterSelectionMode(message.id)
+        binding.selectionBar.visibility = View.VISIBLE
+        updateSelectionTitle(messageAdapter.getSelectedMessages().size)
+        setComposerEnabled(false)
+        hideKeyboard()
+    }
+
+    /** 退出消息多选：隐藏操作栏，恢复输入区。 */
+    private fun exitMessageSelection() {
+        if (!messageSelectionActive) return
+        messageSelectionActive = false
+        messageAdapter.exitSelectionMode()
+        binding.selectionBar.visibility = View.GONE
+        setComposerEnabled(true)
+    }
+
+    private fun updateSelectionTitle(count: Int) {
+        binding.selectionTitle.text = getString(R.string.selection_title_count, count)
+    }
+
+    /** 多选期间冻结输入区，退出后恢复正常。 */
+    private fun setComposerEnabled(enabled: Boolean) {
+        binding.messageInput.isEnabled = enabled
+        binding.addButton.isEnabled = enabled
+        binding.thinkingModeLabel.isEnabled = enabled
+        updateSendButton()
+    }
+
+    /** 批量复制选中消息：按「我：/ ChatYUE：」前缀逐条拼接，保持会话阅读顺序。 */
+    private fun copySelectedMessages() {
+        val selected = messageAdapter.getSelectedMessages()
+        if (selected.isEmpty()) {
+            CompatToast.show(this, R.string.selection_empty)
+            return
+        }
+        val text = selected.joinToString(separator = "\n\n") { message ->
+            val speaker = if (message.role == MessageRole.USER) {
+                getString(R.string.role_user)
+            } else {
+                getString(R.string.role_assistant)
+            }
+            "$speaker：${message.content}"
+        }
+        val clipboard = getSystemService<ClipboardManager>() ?: return
+        clipboard.setPrimaryClip(
+            ClipData.newPlainText(getString(R.string.app_name), text),
+        )
+        CompatToast.show(this, getString(R.string.selection_copy_done, selected.size))
+    }
+
+    private fun confirmSelectionDelete() {
+        val count = messageAdapter.getSelectedMessages().size
+        if (count == 0) {
+            CompatToast.show(this, R.string.selection_empty)
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.selection_delete_title)
+            .setMessage(getString(R.string.selection_delete_message, count))
+            .setPositiveButton(R.string.confirm_delete_positive) { _, _ ->
+                performSelectionDelete()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun performSelectionDelete() {
+        val selectedIds = messageAdapter.getSelectedMessages().map { it.id }
+        if (selectedIds.isEmpty()) return
+        val conversationId = currentConversationId
+        repository.deleteMessages(selectedIds)
+        if (conversationId != null) {
+            loadMessages(conversationId)
+        }
+        refreshConversationList(binding.searchInput.text?.toString().orEmpty())
+        exitMessageSelection()
+        CompatToast.show(this, getString(R.string.selection_delete_done, selectedIds.size))
     }
 
     // ---------------- 引用回复 ----------------
@@ -1330,8 +1452,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateComposer(isGenerating: Boolean) {
-        binding.messageInput.isEnabled = !isGenerating
-        binding.addButton.isEnabled = !isGenerating
+        // 多选模式下输入区保持冻结，即使生成状态变化也不解冻。
+        val composerEnabled = !isGenerating && !messageSelectionActive
+        binding.messageInput.isEnabled = composerEnabled
+        binding.addButton.isEnabled = composerEnabled
         binding.sendButton.setImageResource(
             if (isGenerating) R.drawable.ic_stop else R.drawable.ic_send,
         )
@@ -1342,6 +1466,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateSendButton() {
+        // 多选期间发送键一律禁用，避免误触发送。
+        if (messageSelectionActive) {
+            binding.sendButton.isEnabled = false
+            return
+        }
         val isGenerating = isGenerating()
         val hasInput = !binding.messageInput.text.isNullOrBlank() || hasAttachment()
         binding.sendButton.isEnabled = isGenerating || hasInput
@@ -1420,6 +1549,7 @@ class MainActivity : AppCompatActivity() {
         private const val MENU_REGENERATE_ITEM = 101
         private const val MENU_DELETE_ITEM = 102
         private const val MENU_REPLY_ITEM = 103
+        private const val MENU_MULTI_SELECT_ITEM = 104
         private const val MENU_CONV_PIN = 200
         private const val MENU_CONV_RENAME = 201
         private const val MENU_CONV_DELETE = 202

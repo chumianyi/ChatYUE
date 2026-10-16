@@ -24,6 +24,7 @@ class ChatMessageAdapter(
     private val markwon: Markwon,
     private val onAction: (MessageAction, ChatMessage) -> Unit,
     private val onLongPress: (ChatMessage, View) -> Unit = { _, _ -> },
+    private val onSelectionCountChanged: (Int) -> Unit = {},
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private val messages = mutableListOf<ChatMessage>()
     private val collapsedThinkingIds = mutableSetOf<Long>()
@@ -34,6 +35,10 @@ class ChatMessageAdapter(
     /** 点赞 / 点踩的本地状态（互斥）。 */
     private val likedIds = mutableSetOf<Long>()
     private val dislikedIds = mutableSetOf<Long>()
+
+    /** 消息多选模式：进入后点击消息即切换选中，长按菜单与操作栏停用。 */
+    private var selectionMode = false
+    private val selectedIds = mutableSetOf<Long>()
 
     init {
         setHasStableIds(true)
@@ -58,6 +63,7 @@ class ChatMessageAdapter(
                 UserMessageViewHolder(
                     ItemMessageUserBinding.inflate(inflater, parent, false),
                     onLongPress,
+                    ::handleItemClick,
                 )
             }
 
@@ -81,6 +87,7 @@ class ChatMessageAdapter(
                     markwon,
                     onAction,
                     onLongPress,
+                    ::handleItemClick,
                 )
             }
         }
@@ -89,7 +96,12 @@ class ChatMessageAdapter(
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val message = messages[position]
         when (holder) {
-            is UserMessageViewHolder -> holder.bind(message)
+            is UserMessageViewHolder -> holder.bind(
+                message,
+                selectionMode = selectionMode,
+                selected = selectedIds.contains(message.id),
+            )
+
             is AssistantMessageViewHolder -> {
                 val followsThinking = position > 0 &&
                     (messages[position - 1].role == MessageRole.THINKING_FINISHED ||
@@ -97,14 +109,19 @@ class ChatMessageAdapter(
                 holder.bind(
                     message = message,
                     showLogo = !followsThinking,
-                    showActions = message.id != streamingMessageId,
+                    // 多选模式下助手操作栏停用，整行只保留选中交互。
+                    showActions = message.id != streamingMessageId && !selectionMode,
                     liked = likedIds.contains(message.id),
                     disliked = dislikedIds.contains(message.id),
+                    selectionMode = selectionMode,
+                    selected = selectedIds.contains(message.id),
                 )
             }
+
             is ThinkingMessageViewHolder -> {
                 holder.bind(message, collapsedThinkingIds.contains(message.id))
             }
+
             is SummaryMessageViewHolder -> holder.bind(message)
         }
     }
@@ -114,15 +131,30 @@ class ChatMessageAdapter(
         position: Int,
         payloads: MutableList<Any>,
     ) {
-        // 只改了点赞 / 点踩状态时，避免重新解析 Markdown，防止长回答卡顿。
-        if (payloads.isNotEmpty() && holder is AssistantMessageViewHolder) {
-            val message = messages[position]
-            holder.bindActions(
-                showActions = message.id != streamingMessageId,
-                liked = likedIds.contains(message.id),
-                disliked = dislikedIds.contains(message.id),
-            )
-            return
+        val message = messages[position]
+        // 局部刷新：点赞 / 点踩变化或选中状态变化时，避免重新解析 Markdown，防止长回答卡顿。
+        if (payloads.isNotEmpty()) {
+            var handled = false
+            if (holder is AssistantMessageViewHolder) {
+                holder.bindActions(
+                    showActions = message.id != streamingMessageId && !selectionMode,
+                    liked = likedIds.contains(message.id),
+                    disliked = dislikedIds.contains(message.id),
+                )
+                handled = true
+            }
+            if (payloads.contains(PAYLOAD_SELECTION)) {
+                val selected = selectedIds.contains(message.id)
+                when (holder) {
+                    is UserMessageViewHolder ->
+                        holder.bindSelection(message, selectionMode, selected)
+
+                    is AssistantMessageViewHolder ->
+                        holder.bindSelection(message, selectionMode, selected)
+                }
+                handled = true
+            }
+            if (handled) return
         }
         super.onBindViewHolder(holder, position, payloads)
     }
@@ -146,6 +178,8 @@ class ChatMessageAdapter(
         })
         messages.clear()
         messages.addAll(newMessages)
+        // 被删除的消息如果还在选中集合里，一并清掉，避免统计虚高。
+        selectedIds.retainAll(newMessages.map { it.id }.toSet())
         collapsedThinkingIds.retainAll(
             newMessages
                 .filter {
@@ -196,6 +230,67 @@ class ChatMessageAdapter(
         return disliked
     }
 
+    // ---------------- 消息多选 ----------------
+
+    /** 是否处于多选模式。 */
+    fun isSelectionMode(): Boolean = selectionMode
+
+    /** 进入多选模式，并默认选中触发入口的那条消息。 */
+    fun enterSelectionMode(messageId: Long) {
+        if (selectionMode) return
+        selectionMode = true
+        selectedIds.clear()
+        if (messages.any { it.id == messageId && isSelectable(it) }) {
+            selectedIds.add(messageId)
+        }
+        refreshSelectionUi()
+    }
+
+    /** 退出多选模式并清空选中。 */
+    fun exitSelectionMode() {
+        if (!selectionMode) return
+        selectionMode = false
+        selectedIds.clear()
+        refreshSelectionUi()
+    }
+
+    /** 全选当前可参与多选的消息（用户与助手消息；思考与摘要除外）。 */
+    fun selectAllSelectable() {
+        if (!selectionMode) return
+        selectedIds.clear()
+        messages.filter { isSelectable(it) }.forEach { selectedIds.add(it.id) }
+        refreshSelectionUi()
+    }
+
+    /** 取当前选中的消息（按列表顺序，便于复制 / 删除时保持阅读顺序）。 */
+    fun getSelectedMessages(): List<ChatMessage> = messages.filter { it.id in selectedIds }
+
+    private fun toggleSelection(messageId: Long) {
+        if (!selectionMode) return
+        if (!selectedIds.add(messageId)) {
+            selectedIds.remove(messageId)
+        }
+        notifyMessage(messageId)
+        onSelectionCountChanged(selectedIds.size)
+    }
+
+    private fun handleItemClick(message: ChatMessage) {
+        if (!selectionMode || !isSelectable(message)) return
+        toggleSelection(message.id)
+    }
+
+    private fun isSelectable(message: ChatMessage): Boolean =
+        message.role == MessageRole.USER || message.role == MessageRole.ASSISTANT
+
+    private fun refreshSelectionUi() {
+        if (messages.isEmpty()) {
+            onSelectionCountChanged(selectedIds.size)
+            return
+        }
+        notifyItemRangeChanged(0, messages.size, PAYLOAD_SELECTION)
+        onSelectionCountChanged(selectedIds.size)
+    }
+
     private fun notifyMessage(messageId: Long) {
         val position = messages.indexOfFirst { it.id == messageId }
         if (position >= 0) notifyItemChanged(position, PAYLOAD_ACTIONS)
@@ -212,14 +307,39 @@ class ChatMessageAdapter(
     private class UserMessageViewHolder(
         private val binding: ItemMessageUserBinding,
         private val onLongPress: (ChatMessage, View) -> Unit,
+        private val onItemClick: (ChatMessage) -> Unit,
     ) : RecyclerView.ViewHolder(binding.root) {
-        fun bind(message: ChatMessage) {
-            binding.messageText.text = message.content
-            bindReplyQuote(message)
+        private var current: ChatMessage? = null
+
+        init {
+            binding.root.setOnClickListener {
+                current?.let(onItemClick)
+            }
             binding.root.setOnLongClickListener {
+                val message = current ?: return@setOnLongClickListener false
                 onLongPress(message, binding.messageText)
                 true
             }
+        }
+
+        fun bind(
+            message: ChatMessage,
+            selectionMode: Boolean,
+            selected: Boolean,
+        ) {
+            current = message
+            binding.messageText.text = message.content
+            bindReplyQuote(message)
+            bindSelection(message, selectionMode, selected)
+        }
+
+        /** 多选视觉：指示器显隐 + 气泡选中态。 */
+        fun bindSelection(message: ChatMessage, selectionMode: Boolean, selected: Boolean) {
+            val showIndicator = selectionMode &&
+                (message.role == MessageRole.USER || message.role == MessageRole.ASSISTANT)
+            binding.messageSelectIndicator.visibility =
+                if (showIndicator) View.VISIBLE else View.GONE
+            binding.messageText.isActivated = selected
         }
 
         /** 有引用才显示引用块，无引用时彻底隐藏，不占位。 */
@@ -245,6 +365,7 @@ class ChatMessageAdapter(
         private val markwon: Markwon,
         private val onAction: (MessageAction, ChatMessage) -> Unit,
         private val onLongPress: (ChatMessage, View) -> Unit,
+        private val onItemClick: (ChatMessage) -> Unit,
     ) : RecyclerView.ViewHolder(binding.root) {
         private var current: ChatMessage? = null
 
@@ -254,6 +375,9 @@ class ChatMessageAdapter(
         }
 
         init {
+            binding.root.setOnClickListener {
+                current?.let(onItemClick)
+            }
             binding.root.setOnLongClickListener {
                 val message = current ?: return@setOnLongClickListener false
                 onLongPress(message, binding.messageActions)
@@ -281,6 +405,8 @@ class ChatMessageAdapter(
             showActions: Boolean,
             liked: Boolean,
             disliked: Boolean,
+            selectionMode: Boolean,
+            selected: Boolean,
         ) {
             current = message
             binding.assistantLogo.visibility = if (showLogo) View.VISIBLE else View.GONE
@@ -292,23 +418,16 @@ class ChatMessageAdapter(
             binding.copyButton.setImageResource(R.drawable.ic_action_copy)
 
             bindActions(showActions, liked, disliked)
+            bindSelection(message, selectionMode, selected)
         }
 
-        /** 有引用才显示引用块，无引用时彻底隐藏，不占位。 */
-        private fun bindReplyQuote(message: ChatMessage) {
-            val quoted = message.repliedToId != null &&
-                message.repliedRole != null &&
-                !message.repliedPreview.isNullOrEmpty()
-            binding.replyQuote.visibility = if (quoted) View.VISIBLE else View.GONE
-            if (!quoted) return
-            binding.replyRole.setText(
-                if (message.repliedRole == MessageRole.USER) {
-                    R.string.role_user
-                } else {
-                    R.string.role_assistant
-                },
-            )
-            binding.replyPreview.text = message.repliedPreview
+        /** 多选视觉：指示器显隐 + 文本选中态。 */
+        fun bindSelection(message: ChatMessage, selectionMode: Boolean, selected: Boolean) {
+            val showIndicator = selectionMode &&
+                (message.role == MessageRole.USER || message.role == MessageRole.ASSISTANT)
+            binding.messageSelectIndicator.visibility =
+                if (showIndicator) View.VISIBLE else View.GONE
+            binding.messageText.isActivated = selected
         }
 
         /** 只更新操作栏（点赞 / 点踩状态变化时调用，不重新渲染正文）。 */
@@ -334,6 +453,23 @@ class ChatMessageAdapter(
                 if (active) R.color.ds_blue else R.color.ds_text_secondary,
             )
             button.imageTintList = ColorStateList.valueOf(color)
+        }
+
+        /** 有引用才显示引用块，无引用时彻底隐藏，不占位。 */
+        private fun bindReplyQuote(message: ChatMessage) {
+            val quoted = message.repliedToId != null &&
+                message.repliedRole != null &&
+                !message.repliedPreview.isNullOrEmpty()
+            binding.replyQuote.visibility = if (quoted) View.VISIBLE else View.GONE
+            if (!quoted) return
+            binding.replyRole.setText(
+                if (message.repliedRole == MessageRole.USER) {
+                    R.string.role_user
+                } else {
+                    R.string.role_assistant
+                },
+            )
+            binding.replyPreview.text = message.repliedPreview
         }
     }
 
@@ -397,6 +533,9 @@ class ChatMessageAdapter(
 
         /** 只刷新操作栏的局部更新标记。 */
         private val PAYLOAD_ACTIONS = Any()
+
+        /** 只刷新多选选中态的局部更新标记。 */
+        private val PAYLOAD_SELECTION = Any()
 
         private const val VIEW_TYPE_USER = 1
         private const val VIEW_TYPE_ASSISTANT = 2

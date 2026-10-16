@@ -426,6 +426,51 @@ class LocalChatRepository(context: Context) :
         }
     }
 
+    override fun deleteMessages(messageIds: List<Long>) {
+        if (messageIds.isEmpty()) return
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            // 先把受影响的会话收集出来，删除后统一刷新排序时间。
+            val affectedConversations = mutableSetOf<Long>()
+            messageIds.chunked(SQL_VARIABLE_LIMIT).forEach { chunk ->
+                val placeholders = chunk.joinToString(",") { "?" }
+                readableDatabase.query(
+                    TABLE_MESSAGES,
+                    arrayOf(COLUMN_CONVERSATION_ID),
+                    "$COLUMN_ID IN ($placeholders)",
+                    chunk.map { it.toString() }.toTypedArray(),
+                    null,
+                    null,
+                    null,
+                ).use { cursor ->
+                    val conversationIndex =
+                        cursor.getColumnIndexOrThrow(COLUMN_CONVERSATION_ID)
+                    while (cursor.moveToNext()) {
+                        affectedConversations.add(cursor.getLong(conversationIndex))
+                    }
+                }
+                db.delete(
+                    TABLE_MESSAGES,
+                    "$COLUMN_ID IN ($placeholders)",
+                    chunk.map { it.toString() }.toTypedArray(),
+                )
+            }
+            val now = System.currentTimeMillis()
+            affectedConversations.forEach { conversationId ->
+                db.update(
+                    TABLE_CONVERSATIONS,
+                    ContentValues().apply { put(COLUMN_UPDATED_AT, now) },
+                    "$COLUMN_ID = ?",
+                    arrayOf(conversationId.toString()),
+                )
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
     override fun deleteMessagesAfter(messageId: Long) {
         // 同会话内主键 id 单调递增，用 id 比较即可精确截断到该消息为止。
         val db = writableDatabase
@@ -564,6 +609,9 @@ class LocalChatRepository(context: Context) :
         private const val DATABASE_NAME = "chatyue.db"
         private const val DATABASE_VERSION = 4
         private const val SUMMARY_CREATED_AT = 1L
+
+        /** SQLite 单条语句的变量数上限，批量删除按此分片，避免超出 999 限制。 */
+        private const val SQL_VARIABLE_LIMIT = 400
 
         private const val TABLE_CONVERSATIONS = "conversations"
         private const val TABLE_MESSAGES = "messages"
