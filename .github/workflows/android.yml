@@ -74,12 +74,15 @@ jobs:
         run: |
           APK="app/build/outputs/apk/release/ChatYUE-${VERSION}-release.apk"
           test -f "$APK"
+          # 先把 APK 暂存到工作区外，随后清空仓库只留它。
+          STAGE="$(mktemp -d)"
+          cp "$APK" "$STAGE/"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout --orphan apk-release
           git rm -rf --cached . >/dev/null
           rm -rf app .github gradle .gitignore *.md *.properties *.txt settings.gradle.kts 2>/dev/null || true
-          cp "$APK" .
+          cp "$STAGE/ChatYUE-${VERSION}-release.apk" .
           git add "ChatYUE-${VERSION}-release.apk"
           git commit -m "release: ChatYUE ${VERSION}"
           git push -f origin apk-release
@@ -101,5 +104,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ChatYUE-unit-test-report
-          path: app/build/reports/tests/test
+          path: app/build/reports/tests
           if-no-files-found: ignore
