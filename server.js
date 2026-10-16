@@ -13,8 +13,8 @@ const MODELS = {
   'GLM-4.1V-Thinking-Flash': { upstream: 'GLM-4.1V-Thinking-Flash', created: 1700000000 },
   'glm-4.7-flash':           { upstream: 'glm-4.7-flash',           created: 1700000000 },
 };
+const DEFAULT_MODEL = 'GLM-4.1V-Thinking-Flash';
 
-// Per-IP concurrency: max 1 request per IP
 const ipConcurrency = new Map();
 
 app.use(express.json({ limit: '50mb' }));
@@ -41,7 +41,6 @@ function perIpLimit(req, res, next) {
   next();
 }
 
-// GET /v1/models
 app.get('/v1/models', (req, res) => {
   const data = Object.keys(MODELS).map(id => ({
     id, object: 'model', created: MODELS[id].created, owned_by: 'deepseekold'
@@ -49,16 +48,14 @@ app.get('/v1/models', (req, res) => {
   res.json({ object: 'list', data });
 });
 
-// POST /v1/chat/completions
 app.all('/v1/chat/completions', checkAuth, perIpLimit, (req, res) => {
   let body = req.body;
   if (Buffer.isBuffer(body)) { try { body = JSON.parse(body.toString()); } catch(e) { body = {}; } }
 
   const reqModel = body.model || '';
-  if (!MODELS[reqModel]) {
-    return res.status(404).json({ error: { message: 'model not found: ' + reqModel, type: 'invalid_request_error' } });
-  }
-  body.model = MODELS[reqModel].upstream;
+  // Unknown/empty model names default to the thinking model
+  const target = MODELS[reqModel] || MODELS[DEFAULT_MODEL];
+  body.model = target.upstream;
 
   const isStream = body.stream === true;
   const bodyStr = JSON.stringify(body);
@@ -84,4 +81,4 @@ app.all('/v1/chat/completions', checkAuth, perIpLimit, (req, res) => {
 });
 
 app.get('/', (req, res) => { res.type('text/plain').send('DeepSeekOld API Proxy'); });
-app.listen(PORT, HOST, () => { console.log('DeepSeekOld on ' + HOST + ':' + PORT + ' models=' + Object.keys(MODELS).join(',') + ' per-IP concurrency=1'); });
+app.listen(PORT, HOST, () => { console.log('DeepSeekOld on ' + HOST + ':' + PORT + ' default=' + DEFAULT_MODEL + ' per-IP=1'); });
