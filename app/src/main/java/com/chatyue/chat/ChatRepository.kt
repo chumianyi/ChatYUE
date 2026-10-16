@@ -52,6 +52,9 @@ interface ChatRepository {
 
     fun updateMessageRole(messageId: Long, role: MessageRole)
 
+    /** 编辑消息：只更新正文（含附件块），用于「编辑消息」功能。 */
+    fun updateMessageContent(messageId: Long, content: String)
+
     /** 删除单条消息。 */
     fun deleteMessage(messageId: Long)
 

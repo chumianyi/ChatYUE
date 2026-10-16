@@ -1655,17 +1655,21 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** 长按消息气泡：复制 / 引用回复 / 多选 / 重新生成 / 分享 / 删除。 */
+    /** 长按消息气泡：复制 / 引用回复 / 编辑 / 多选 / 重新生成 / 分享 / 删除。 */
     private fun handleMessageLongPress(message: ChatMessage, anchor: View) {
         // 多选模式下长按不再弹菜单，避免两种交互打架。
         if (messageAdapter.isSelectionMode()) return
         PopupMenu(this, anchor).apply {
             menu.add(0, MENU_COPY_ITEM, 0, R.string.action_copy)
             menu.add(0, MENU_REPLY_ITEM, 1, R.string.action_reply)
-            menu.add(0, MENU_MULTI_SELECT_ITEM, 2, R.string.action_multi_select)
-            menu.add(0, MENU_REGENERATE_ITEM, 3, R.string.action_regenerate)
-            menu.add(0, MENU_SHARE_ITEM, 4, R.string.action_share)
-            menu.add(0, MENU_DELETE_ITEM, 5, R.string.action_delete)
+            // 编辑只对用户提问有意义：改自己的话，或改完让它重新回答。
+            if (message.role == MessageRole.USER) {
+                menu.add(0, MENU_EDIT_ITEM, 2, R.string.action_edit)
+            }
+            menu.add(0, MENU_MULTI_SELECT_ITEM, 3, R.string.action_multi_select)
+            menu.add(0, MENU_REGENERATE_ITEM, 4, R.string.action_regenerate)
+            menu.add(0, MENU_SHARE_ITEM, 5, R.string.action_share)
+            menu.add(0, MENU_DELETE_ITEM, 6, R.string.action_delete)
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     MENU_COPY_ITEM -> {
@@ -1675,6 +1679,11 @@ class MainActivity : AppCompatActivity() {
 
                     MENU_REPLY_ITEM -> {
                         startReplyTo(message)
+                        true
+                    }
+
+                    MENU_EDIT_ITEM -> {
+                        showEditMessageDialog(message)
                         true
                     }
 
@@ -1964,6 +1973,72 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    /**
+     * 编辑用户消息：正文可改，附件块原样保留（用户看不见、也不需要动）。
+     *
+     * 「仅保存」只更新库里的正文；「保存并重新生成」以编辑后的提问为基准，
+     * 删掉这条消息之后的内容并让助手重新回答。
+     */
+    private fun showEditMessageDialog(message: ChatMessage) {
+        if (isGenerating()) {
+            CompatToast.show(this, R.string.selection_busy_generating)
+            return
+        }
+        val parts = EditMessageText.split(message.content)
+        val input = EditText(this).apply {
+            setText(parts.body)
+            setSelection(text.length)
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+                android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            maxLines = 6
+            minHeight = (96 * resources.displayMetrics.density).toInt()
+            gravity = android.view.Gravity.TOP or android.view.Gravity.START
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.edit_message_title)
+            .setView(input)
+            .setPositiveButton(R.string.edit_message_save_only) { _, _ ->
+                saveEditedMessage(
+                    message = message,
+                    parts = parts,
+                    editedBody = input.text?.toString().orEmpty(),
+                    regenerate = false,
+                )
+            }
+            .setNeutralButton(R.string.edit_message_save_regenerate) { _, _ ->
+                saveEditedMessage(
+                    message = message,
+                    parts = parts,
+                    editedBody = input.text?.toString().orEmpty(),
+                    regenerate = true,
+                )
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun saveEditedMessage(
+        message: ChatMessage,
+        parts: EditMessageText.Parts,
+        editedBody: String,
+        regenerate: Boolean,
+    ) {
+        val newContent = EditMessageText.merge(editedBody, parts.attachmentBlock)
+        if (newContent == message.content) {
+            CompatToast.show(this, R.string.edit_message_unchanged)
+            return
+        }
+        repository.updateMessageContent(message.id, newContent)
+        if (regenerate) {
+            // 复用「重新生成」链路：以编辑后的提问为基准删掉后续内容并重新请求。
+            regenerateFrom(message.copy(content = newContent))
+        } else {
+            loadMessages(message.conversationId)
+            CompatToast.show(this, R.string.edit_message_saved)
+        }
+    }
+
     private fun performDeleteMessage(message: ChatMessage) {
         val conversationId = message.conversationId
         // 删掉的正是正在朗读的消息时，先停掉朗读，避免图标停在失效消息上。
@@ -2156,6 +2231,7 @@ class MainActivity : AppCompatActivity() {
         private const val MENU_REPLY_ITEM = 103
         private const val MENU_MULTI_SELECT_ITEM = 104
         private const val MENU_SHARE_ITEM = 105
+        private const val MENU_EDIT_ITEM = 106
         private const val MENU_CONV_PIN = 200
         private const val MENU_CONV_RENAME = 201
         private const val MENU_CONV_EXPORT = 203

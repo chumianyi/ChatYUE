@@ -441,6 +441,16 @@ class LocalChatRepository(context: Context) :
         )
     }
 
+    override fun updateMessageContent(messageId: Long, content: String) {
+        // 编辑不改变消息时间与会话排序，只替换正文列。
+        writableDatabase.update(
+            TABLE_MESSAGES,
+            ContentValues().apply { put(COLUMN_CONTENT, content) },
+            "$COLUMN_ID = ?",
+            arrayOf(messageId.toString()),
+        )
+    }
+
     override fun deleteMessage(messageId: Long) {
         // 先取所属会话，删除后把该会话的排序时间刷新为当前时间。
         val conversationId = readableDatabase.query(

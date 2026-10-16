@@ -190,6 +190,12 @@
 
     <!-- 消息操作栏 -->
     <string name="action_copy">复制</string>
+    <string name="action_edit">编辑</string>
+    <string name="edit_message_title">编辑消息</string>
+    <string name="edit_message_save_only">仅保存</string>
+    <string name="edit_message_save_regenerate">保存并重新生成</string>
+    <string name="edit_message_saved">已保存修改</string>
+    <string name="edit_message_unchanged">内容没有变化</string>
     <string name="action_like">点赞</string>
     <string name="action_dislike">点踩</string>
     <string name="action_speak">朗读</string>
