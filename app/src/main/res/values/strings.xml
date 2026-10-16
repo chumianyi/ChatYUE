@@ -257,6 +257,7 @@
     <string name="message_search_empty">输入关键词，搜索全部历史消息</string>
     <string name="message_search_no_result">没有找到包含该关键词的消息</string>
     <string name="message_search_result_count">共 %1$d 条结果</string>
+    <string name="message_search_located">已定位到该消息</string>
     <string name="role_user">我</string>
     <string name="role_assistant">ChatYUE</string>
     <!-- 引用回复 -->

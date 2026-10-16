@@ -60,7 +60,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var conversationAdapter: ConversationAdapter
     private lateinit var draftStore: DraftStore
 
-    /** 启动消息搜索页，返回用户选中的会话并打开。 */
+    /** 启动消息搜索页，返回用户选中的会话并打开，可选定位到命中的消息。 */
     private val searchLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
     ) { result ->
@@ -68,7 +68,10 @@ class MainActivity : AppCompatActivity() {
             val id = result.data
                 ?.getLongExtra(MessageSearchActivity.EXTRA_OPEN_CONVERSATION, -1L)
                 ?: -1L
-            if (id > 0) openConversationById(id)
+            val messageId = result.data
+                ?.getLongExtra(MessageSearchActivity.EXTRA_OPEN_MESSAGE, -1L)
+                ?: -1L
+            if (id > 0) openConversationById(id, messageId.takeIf { it > 0 })
         }
     }
 
@@ -950,10 +953,32 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    private fun openConversationById(conversationId: Long) {
+    private fun openConversationById(conversationId: Long, locateMessageId: Long? = null) {
         val conversation = repository.getConversation(conversationId) ?: return
         selectConversation(conversation)
         binding.drawerLayout.closeDrawer(GravityCompat.START)
+        // 从搜索结果进来时，等消息列表布局稳定后定位到命中的那条消息。
+        if (locateMessageId != null) locateMessageInCurrentConversation(locateMessageId)
+    }
+
+    /**
+     * 在刚打开的会话里定位到指定消息：滚动过去并短暂高亮。
+     *
+     * 与点击引用块的定位共用一套高亮通道；消息可能已被删除，此时只提示不滚动。
+     */
+    private fun locateMessageInCurrentConversation(messageId: Long) {
+        binding.messageList.post {
+            val position = messageAdapter.findRowPositionOfMessage(messageId)
+            if (position < 0) {
+                CompatToast.show(this, R.string.reply_jump_missing)
+                return@post
+            }
+            binding.messageList.removeCallbacks(clearHighlightRunnable)
+            binding.messageList.smoothScrollToPosition(position)
+            messageAdapter.setHighlightMessageId(messageId)
+            binding.messageList.postDelayed(clearHighlightRunnable, HIGHLIGHT_MILLIS)
+            CompatToast.show(this, R.string.message_search_located)
+        }
     }
 
     private fun selectConversation(conversation: Conversation) {

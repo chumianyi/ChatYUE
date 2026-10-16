@@ -32,7 +32,10 @@ class MessageSearchActivity : AppCompatActivity() {
         adapter = MessageHitAdapter { hit ->
             setResult(
                 RESULT_OK,
-                Intent().putExtra(EXTRA_OPEN_CONVERSATION, hit.conversationId),
+                Intent().apply {
+                    putExtra(EXTRA_OPEN_CONVERSATION, hit.conversationId)
+                    putExtra(EXTRA_OPEN_MESSAGE, hit.messageId)
+                },
             )
             finish()
         }
@@ -52,7 +55,7 @@ class MessageSearchActivity : AppCompatActivity() {
 
     private fun showIdle() {
         searchToken.incrementAndGet()
-        adapter.submit(emptyList())
+        adapter.submit(emptyList(), "")
         binding.emptyText.visibility = View.VISIBLE
         binding.emptyText.setText(R.string.message_search_empty)
         binding.resultCountLabel.text = ""
@@ -65,12 +68,12 @@ class MessageSearchActivity : AppCompatActivity() {
         // 用户已输入新关键词，丢弃这次过期结果。
         if (token != searchToken.get()) return
         if (hits.isEmpty()) {
-            adapter.submit(emptyList())
+            adapter.submit(emptyList(), query)
             binding.emptyText.visibility = View.VISIBLE
             binding.emptyText.setText(R.string.message_search_no_result)
             binding.resultCountLabel.text = ""
         } else {
-            adapter.submit(hits)
+            adapter.submit(hits, query)
             binding.emptyText.visibility = View.GONE
             binding.resultCountLabel.text =
                 getString(R.string.message_search_result_count, hits.size)
@@ -85,6 +88,9 @@ class MessageSearchActivity : AppCompatActivity() {
     companion object {
         /** 打开会话时回传给主页的 Extra 键。 */
         const val EXTRA_OPEN_CONVERSATION = "com.chatyue.chat.OPEN_CONVERSATION"
+
+        /** 回传命中的具体消息，主页打开会话后定位并高亮该消息。 */
+        const val EXTRA_OPEN_MESSAGE = "com.chatyue.chat.OPEN_MESSAGE"
 
         private const val SEARCH_LIMIT = 200
     }
