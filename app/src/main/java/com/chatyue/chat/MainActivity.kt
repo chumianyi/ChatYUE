@@ -94,6 +94,10 @@ class MainActivity : AppCompatActivity() {
     /** 消息多选模式是否激活（顶栏显示多选操作栏）。 */
     private var messageSelectionActive = false
 
+    /** 消息朗读（TTS）与当前正在朗读的消息 id。 */
+    private var messageSpeaker: MessageSpeaker? = null
+    private var speakingMessageId: Long? = null
+
     /** 强制升级守护（2.0）。 */
     private var versionGuard: VersionGuard? = null
 
@@ -153,6 +157,9 @@ class MainActivity : AppCompatActivity() {
 
         // 2.0：强制版本更新守护，静默常驻。
         versionGuard = VersionGuard(this).also { it.start() }
+
+        // 朗读引擎跟随主界面生命周期，退出时统一释放。
+        messageSpeaker = MessageSpeaker(this)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -185,6 +192,9 @@ class MainActivity : AppCompatActivity() {
         if (initialized && !isChangingConfigurations) {
             viewModel.cancelGeneration()
         }
+        stopSpeaking(silent = true)
+        messageSpeaker?.release()
+        messageSpeaker = null
         versionGuard?.dismiss()
         versionGuard = null
         ioExecutor.shutdownNow()
@@ -729,6 +739,7 @@ class MainActivity : AppCompatActivity() {
         showMessages(emptyList())
         hideKeyboard()
         refreshConversationList(binding.searchInput.text?.toString().orEmpty())
+        stopSpeaking(silent = true)
     }
 
     /**
@@ -819,6 +830,7 @@ class MainActivity : AppCompatActivity() {
         clearReply()
         exitMessageSelection()
         restoreDraft()
+        stopSpeaking(silent = true)
     }
 
     private fun loadMessages(
@@ -1235,6 +1247,42 @@ class MainActivity : AppCompatActivity() {
                     CompatToast.show(this, R.string.action_dislike_done)
                 }
             }
+            MessageAction.SPEAK -> toggleSpeak(message)
+        }
+    }
+
+    // ---------------- 消息朗读 ----------------
+
+    /** 点击朗读按钮：正在朗读该条则停止，否则清洗 Markdown 后朗读。 */
+    private fun toggleSpeak(message: ChatMessage) {
+        if (speakingMessageId == message.id) {
+            stopSpeaking()
+            return
+        }
+        val speechText = MarkdownSpeechStripper.toSpeechText(message.content)
+        if (speechText.isBlank()) {
+            CompatToast.show(this, R.string.speak_empty)
+            return
+        }
+        val speaker = messageSpeaker
+        if (speaker == null) {
+            CompatToast.show(this, R.string.speak_unsupported)
+            return
+        }
+        speakingMessageId = message.id
+        messageAdapter.setSpeakingMessageId(message.id)
+        speaker.speak(speechText)
+        CompatToast.show(this, R.string.speak_started)
+    }
+
+    /** 停止朗读并复位图标；[silent] 用于生命周期或切页等无需提示的场景。 */
+    private fun stopSpeaking(silent: Boolean = false) {
+        if (speakingMessageId == null) return
+        speakingMessageId = null
+        messageSpeaker?.stop()
+        messageAdapter.setSpeakingMessageId(null)
+        if (!silent) {
+            CompatToast.show(this, R.string.speak_stopped)
         }
     }
 
@@ -1455,6 +1503,7 @@ class MainActivity : AppCompatActivity() {
         pendingMessageReloadConversationId = null
         loadMessages(conversationId)
         restoreDraft()
+        stopSpeaking(silent = true)
         dispatchChatRequest(conversationId)
         CompatToast.show(this, R.string.action_regenerate_started)
     }
@@ -1472,6 +1521,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun performDeleteMessage(message: ChatMessage) {
         val conversationId = message.conversationId
+        // 删掉的正是正在朗读的消息时，先停掉朗读，避免图标停在失效消息上。
+        if (speakingMessageId == message.id) stopSpeaking(silent = true)
         repository.deleteMessage(message.id)
         if (currentConversationId == conversationId) {
             loadMessages(conversationId)

@@ -71,6 +71,8 @@ abstract class BaseToolActivity : AppCompatActivity() {
                     toast(getString(R.string.action_dislike_done))
                 }
             }
+            // 工具页不持有 TTS 生命周期，朗读按钮给出明确反馈。
+            MessageAction.SPEAK -> toast(getString(R.string.speak_unsupported))
         }
     }
 

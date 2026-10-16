@@ -18,6 +18,7 @@ enum class MessageAction {
     COPY,
     LIKE,
     DISLIKE,
+    SPEAK,
 }
 
 class ChatMessageAdapter(
@@ -35,6 +36,9 @@ class ChatMessageAdapter(
     /** 点赞 / 点踩的本地状态（互斥）。 */
     private val likedIds = mutableSetOf<Long>()
     private val dislikedIds = mutableSetOf<Long>()
+
+    /** 正在朗读的消息 id；同一条消息再点一次操作栏即停止。 */
+    private var speakingMessageId: Long? = null
 
     /** 消息多选模式：进入后点击消息即切换选中，长按菜单与操作栏停用。 */
     private var selectionMode = false
@@ -113,6 +117,7 @@ class ChatMessageAdapter(
                     showActions = message.id != streamingMessageId && !selectionMode,
                     liked = likedIds.contains(message.id),
                     disliked = dislikedIds.contains(message.id),
+                    speaking = message.id == speakingMessageId,
                     selectionMode = selectionMode,
                     selected = selectedIds.contains(message.id),
                 )
@@ -140,6 +145,7 @@ class ChatMessageAdapter(
                     showActions = message.id != streamingMessageId && !selectionMode,
                     liked = likedIds.contains(message.id),
                     disliked = dislikedIds.contains(message.id),
+                    speaking = message.id == speakingMessageId,
                 )
                 handled = true
             }
@@ -204,6 +210,21 @@ class ChatMessageAdapter(
         }
     }
 
+    /**
+     * 标记正在朗读的消息 id：它的朗读图标变成停止，其余消息恢复原状。
+     *
+     * 只刷新新旧两条助手消息，避免整表重绑。
+     */
+    fun setSpeakingMessageId(messageId: Long?) {
+        if (speakingMessageId == messageId) return
+        val previous = speakingMessageId
+        speakingMessageId = messageId
+        listOfNotNull(previous, messageId).forEach { id ->
+            val position = messages.indexOfFirst { it.id == id }
+            if (position >= 0) notifyItemChanged(position, PAYLOAD_ACTIONS)
+        }
+    }
+
     /** 切换点赞，与点踩互斥；返回切换后的状态。 */
     fun toggleLike(messageId: Long): Boolean {
         val liked = if (likedIds.add(messageId)) {
@@ -231,7 +252,6 @@ class ChatMessageAdapter(
     }
 
     // ---------------- 消息多选 ----------------
-
     /** 是否处于多选模式。 */
     fun isSelectionMode(): Boolean = selectionMode
 
@@ -397,6 +417,9 @@ class ChatMessageAdapter(
             binding.dislikeButton.setOnClickListener {
                 current?.let { onAction(MessageAction.DISLIKE, it) }
             }
+            binding.speakButton.setOnClickListener {
+                current?.let { onAction(MessageAction.SPEAK, it) }
+            }
         }
 
         fun bind(
@@ -405,6 +428,7 @@ class ChatMessageAdapter(
             showActions: Boolean,
             liked: Boolean,
             disliked: Boolean,
+            speaking: Boolean,
             selectionMode: Boolean,
             selected: Boolean,
         ) {
@@ -417,7 +441,7 @@ class ChatMessageAdapter(
             binding.copyButton.removeCallbacks(resetCopyIcon)
             binding.copyButton.setImageResource(R.drawable.ic_action_copy)
 
-            bindActions(showActions, liked, disliked)
+            bindActions(showActions, liked, disliked, speaking)
             bindSelection(message, selectionMode, selected)
         }
 
@@ -430,15 +454,22 @@ class ChatMessageAdapter(
             binding.messageText.isActivated = selected
         }
 
-        /** 只更新操作栏（点赞 / 点踩状态变化时调用，不重新渲染正文）。 */
+        /** 只更新操作栏（点赞 / 点踩 / 朗读状态变化时调用，不重新渲染正文）。 */
         fun bindActions(
             showActions: Boolean,
             liked: Boolean,
             disliked: Boolean,
+            speaking: Boolean,
         ) {
             binding.messageActions.visibility = if (showActions) View.VISIBLE else View.GONE
             tintAction(binding.likeButton, liked)
             tintAction(binding.dislikeButton, disliked)
+            binding.speakButton.setImageResource(
+                if (speaking) R.drawable.ic_stop else R.drawable.ic_volume,
+            )
+            binding.speakButton.contentDescription = binding.root.context.getString(
+                if (speaking) R.string.action_stop_speak else R.string.action_speak,
+            )
             binding.likeButton.contentDescription = binding.root.context.getString(
                 if (liked) R.string.action_like_done else R.string.action_like,
             )
