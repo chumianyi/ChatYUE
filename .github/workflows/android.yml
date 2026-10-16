@@ -60,7 +60,10 @@ jobs:
             case "$f" in ChatYUE-*) continue;; esac
             mv "$f" "ChatYUE-${VERSION}-release.apk"
           done
-          ls -l
+          # 暂存到工作区外的固定目录：后续步骤会清空仓库，apk 仍须可用。
+          rm -rf /tmp/apk-stage && mkdir -p /tmp/apk-stage
+          cp *.apk /tmp/apk-stage/
+          ls -l /tmp/apk-stage
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -72,17 +75,14 @@ jobs:
       # 把 APK 提交到 apk-release 分支，供自动更新链路与离线分发拉取。
       - name: 发布 APK 到 apk-release 分支
         run: |
-          APK="app/build/outputs/apk/release/ChatYUE-${VERSION}-release.apk"
+          APK="/tmp/apk-stage/ChatYUE-${VERSION}-release.apk"
           test -f "$APK"
-          # 先把 APK 暂存到工作区外，随后清空仓库只留它。
-          STAGE="$(mktemp -d)"
-          cp "$APK" "$STAGE/"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout --orphan apk-release
           git rm -rf --cached . >/dev/null
           rm -rf app .github gradle .gitignore *.md *.properties *.txt settings.gradle.kts 2>/dev/null || true
-          cp "$STAGE/ChatYUE-${VERSION}-release.apk" .
+          cp "$APK" .
           git add "ChatYUE-${VERSION}-release.apk"
           git commit -m "release: ChatYUE ${VERSION}"
           git push -f origin apk-release
@@ -93,9 +93,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view "v$VERSION" >/dev/null 2>&1; then
-            gh release upload "v$VERSION" app/build/outputs/apk/release/*.apk --clobber
+            gh release upload "v$VERSION" /tmp/apk-stage/*.apk --clobber
           else
-            gh release create "v$VERSION" app/build/outputs/apk/release/*.apk \
+            gh release create "v$VERSION" /tmp/apk-stage/*.apk \
               --title "ChatYUE ${VERSION}" --latest
           fi
 
