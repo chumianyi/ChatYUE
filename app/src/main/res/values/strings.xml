@@ -196,6 +196,8 @@
     <string name="edit_message_save_regenerate">保存并重新生成</string>
     <string name="edit_message_saved">已保存修改</string>
     <string name="edit_message_unchanged">内容没有变化</string>
+    <string name="notification_channel_generation">生成完成提醒</string>
+    <string name="notification_channel_generation_desc">切到后台时，回复生成完成后发一条无声提醒</string>
     <string name="action_like">点赞</string>
     <string name="action_dislike">点踩</string>
     <string name="action_speak">朗读</string>

@@ -121,6 +121,12 @@ class MainActivity : AppCompatActivity() {
     private var pendingMessageReloadConversationId: Long? = null
     private var pendingMessageListScroll: Runnable? = null
 
+    /** 应用是否在后台：决定「生成完成」是发通知还是只 Toast。 */
+    private var isInBackground = false
+
+    /** 「生成完成」通知的组装与投递。 */
+    private val generationNotifications by lazy { GenerationNotifications(this) }
+
     /** 「回到底部」未读计数：逻辑抽成纯类，便于单测。 */
     private val bottomArrivals = BottomArrivalCounter()
 
@@ -138,8 +144,7 @@ class MainActivity : AppCompatActivity() {
     private var pendingTextName: String? = null
     private var pendingTextContent: String? = null
 
-    /** 新会话的默认记忆模式（2.0：新建会话时由用户选择，默认全局）。 */
-    private var pendingMemoryMode: ConversationMemoryMode = ConversationMemoryMode.GLOBAL
+    /** 新会话的默认记忆模式（2.0：新建会话时由用户选择，默认全局）。 */    private var pendingMemoryMode: ConversationMemoryMode = ConversationMemoryMode.GLOBAL
 
     /** 待发送消息引用的目标消息；null 表示不引用。 */
     private var pendingReplyTarget: ChatMessage? = null
@@ -232,6 +237,9 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         // 从设置页回来时同步朗读语速，让新档位立即生效。
         messageSpeaker?.updateSpeechRate(AppConfig.speechRate(this).rate)
+        isInBackground = false
+        // 回到前台，清掉可能残留的「生成完成」通知。
+        generationNotifications.cancel()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -257,6 +265,7 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
         // 退到后台前把未发送输入存进草稿箱，防止进程被回收后丢内容。
         if (initialized) saveCurrentDraft()
+        isInBackground = true
     }
 
     override fun onDestroy() {
@@ -660,6 +669,13 @@ class MainActivity : AppCompatActivity() {
                     }
                     refreshConversationList(binding.searchInput.text?.toString().orEmpty())
                     showCompletionNotice(state.message.finishReason)
+                    // 切到后台等长回答时，完成后推一条通知；前台留意由 Toast 负责。
+                    if (isInBackground) {
+                        val title = repository.getConversation(state.conversationId)
+                            ?.title
+                            .orEmpty()
+                        generationNotifications.show(title, state.message.content)
+                    }
                     viewModel.acknowledgeTerminal(state.eventId)
                 }
 
