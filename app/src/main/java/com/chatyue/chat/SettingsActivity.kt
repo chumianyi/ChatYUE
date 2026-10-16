@@ -7,6 +7,8 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
 import com.chatyue.chat.databinding.ActivitySettingsBinding
+import com.chatyue.chat.license.LicenseActivity
+import com.chatyue.chat.remote.RemoteConfigRepository
 
 /**
  * 设置页（2.0 新增）。
@@ -55,7 +57,7 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         binding.licensesRow.setOnClickListener {
-            startActivity(Intent(this, license.LicenseActivity::class.java))
+            startActivity(Intent(this, LicenseActivity::class.java))
         }
     }
 

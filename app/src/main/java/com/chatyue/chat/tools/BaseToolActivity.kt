@@ -37,9 +37,12 @@ abstract class BaseToolActivity : AppCompatActivity() {
 
     protected fun setupMessageList(recyclerView: RecyclerView): ChatMessageAdapter {
         lateinit var adapter: ChatMessageAdapter
-        adapter = ChatMessageAdapter(markwon) { action, message ->
-            onMessageAction(adapter, action, message)
-        }
+        adapter = ChatMessageAdapter(
+            markwon = markwon,
+            onAction = { action, message ->
+                onMessageAction(adapter, action, message)
+            },
+        )
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
         recyclerView.itemAnimator = null

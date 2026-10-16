@@ -1072,7 +1072,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun confirmDeleteMessage(message: ChatMessage) {
-        AlertDialog(this)
+        AlertDialog.Builder(this)
             .setTitle(R.string.confirm_delete_message_title)
             .setMessage(R.string.confirm_delete_message)
             .setPositiveButton(R.string.confirm_delete_positive) { _, _ ->
