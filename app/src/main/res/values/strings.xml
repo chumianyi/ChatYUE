@@ -361,4 +361,9 @@
     <string name="prompt_delete_confirm_title">删除指令</string>
     <string name="prompt_delete_confirm">确定删除「%1$s」吗？删除后不可恢复。</string>
     <string name="prompt_inserted">已插入指令：%1$s</string>
+
+    <!-- 引用块定位（2.0） -->
+    <string name="reply_jump">跳转到被引用的消息</string>
+    <string name="reply_jump_done">已定位到被引用的消息</string>
+    <string name="reply_jump_missing">被引用的消息不在当前会话</string>
 </resources>

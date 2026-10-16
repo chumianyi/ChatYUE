@@ -215,6 +215,9 @@ class MainActivity : AppCompatActivity() {
         versionGuard?.dismiss()
         versionGuard = null
         ioExecutor.shutdownNow()
+        if (initialized) {
+            binding.messageList.removeCallbacks(clearHighlightRunnable)
+        }
         super.onDestroy()
     }
 
@@ -256,6 +259,8 @@ class MainActivity : AppCompatActivity() {
             Markwon.create(this),
             ::handleMessageAction,
             ::handleMessageLongPress,
+            // 点击消息里的引用块：滚动定位到被引用的消息并短暂高亮。
+            onReplyQuoteClick = ::jumpToRepliedMessage,
         ) { count ->
             updateSelectionTitle(count)
         }
@@ -1513,7 +1518,42 @@ class MainActivity : AppCompatActivity() {
     /** 切换会话 / 新会话时清掉引用，避免把引用带到别的会话里。 */
     private fun clearReply() {
         pendingReplyTarget = null
-        if (initialized) updateReplyBar()
+        if (initialized) {
+            updateReplyBar()
+            // 换会话后旧高亮失去意义，连同熄灭计时器一起清掉。
+            binding.messageList.removeCallbacks(clearHighlightRunnable)
+            messageAdapter.setHighlightMessageId(null)
+        }
+    }
+
+    // ---------------- 引用块定位 ----------------
+
+    /**
+     * 点击消息里的引用块：滚动到被引用的消息并短暂高亮。
+     *
+     * 被引用消息可能已被删除、或不在当前会话里，此时只提示不滚动。
+     */
+    private fun jumpToRepliedMessage(message: ChatMessage) {
+        val targetId = message.repliedToId
+        if (targetId == null) return
+        // 多选模式下点击只负责切换选中，不触发跳转。
+        if (messageAdapter.isSelectionMode()) return
+        val position = messageAdapter.findRowPositionOfMessage(targetId)
+        if (position < 0) {
+            CompatToast.show(this, R.string.reply_jump_missing)
+            return
+        }
+        // 取消上一次还没熄灭的高亮，避免两条消息同时亮着。
+        binding.messageList.removeCallbacks(clearHighlightRunnable)
+        binding.messageList.smoothScrollToPosition(position)
+        messageAdapter.setHighlightMessageId(targetId)
+        binding.messageList.postDelayed(clearHighlightRunnable, HIGHLIGHT_MILLIS)
+        CompatToast.show(this, R.string.reply_jump_done)
+    }
+
+    /** 高亮熄灭：由主页计时器触发，与点亮走同一条局部刷新通道。 */
+    private val clearHighlightRunnable = Runnable {
+        messageAdapter.setHighlightMessageId(null)
     }
 
     /**
@@ -1768,6 +1808,9 @@ class MainActivity : AppCompatActivity() {
         private const val MENU_STATS = 8
         private const val MENU_EXPORT_CONVERSATION = 7
         private const val MENU_PROMPT_LIBRARY = 9
+
+        /** 定位高亮的停留时长：跳到被引用消息后亮这么久再熄灭。 */
+        private const val HIGHLIGHT_MILLIS = 1600L
         private const val STREAM_THINKING_ID = -1L
         private const val STREAM_ASSISTANT_ID = -2L
 

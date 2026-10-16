@@ -27,6 +27,7 @@ class ChatMessageAdapter(
     private val onAction: (MessageAction, ChatMessage) -> Unit,
     private val onLongPress: (ChatMessage, View) -> Unit = { _, _ -> },
     private val onSelectionCountChanged: (Int) -> Unit = {},
+    private val onReplyQuoteClick: (ChatMessage) -> Unit = {},
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     /** 列表行：消息与按天分隔的时间条混排，提交时由 ChatTimeDivider 统一生成。 */
     private val rows = mutableListOf<ChatRow>()
@@ -49,6 +50,9 @@ class ChatMessageAdapter(
     /** 消息多选模式：进入后点击消息即切换选中，长按菜单与操作栏停用。 */
     private var selectionMode = false
     private val selectedIds = mutableSetOf<Long>()
+
+    /** 定位高亮中的消息 id：点击引用块跳到被引用消息时短暂点亮整行。 */
+    private var highlightMessageId: Long? = null
 
     init {
         setHasStableIds(true)
@@ -79,6 +83,7 @@ class ChatMessageAdapter(
                     ItemMessageUserBinding.inflate(inflater, parent, false),
                     onLongPress,
                     ::handleItemClick,
+                    onReplyQuoteClick,
                 )
             }
 
@@ -107,6 +112,7 @@ class ChatMessageAdapter(
                     onAction,
                     onLongPress,
                     ::handleItemClick,
+                    onReplyQuoteClick,
                 )
             }
         }
@@ -126,6 +132,7 @@ class ChatMessageAdapter(
                 message,
                 selectionMode = selectionMode,
                 selected = selectedIds.contains(message.id),
+                highlighted = message.id == highlightMessageId,
             )
 
             is AssistantMessageViewHolder -> {
@@ -143,6 +150,7 @@ class ChatMessageAdapter(
                     speaking = message.id == speakingMessageId,
                     selectionMode = selectionMode,
                     selected = selectedIds.contains(message.id),
+                    highlighted = message.id == highlightMessageId,
                 )
             }
 
@@ -197,6 +205,15 @@ class ChatMessageAdapter(
 
                     is AssistantMessageViewHolder ->
                         holder.bindSelection(message, selectionMode, selected)
+                }
+                handled = true
+            }
+            if (payloads.contains(PAYLOAD_HIGHLIGHT)) {
+                when (holder) {
+                    is UserMessageViewHolder ->
+                        holder.bindHighlight(message, message.id == highlightMessageId)
+                    is AssistantMessageViewHolder ->
+                        holder.bindHighlight(message, message.id == highlightMessageId)
                 }
                 handled = true
             }
@@ -363,6 +380,23 @@ class ChatMessageAdapter(
     private fun rowIndexOf(messageId: Long): Int =
         rows.indexOfFirst { row -> row is ChatRow.Message && row.message.id == messageId }
 
+    /** 对外暴露的消息定位查询：供点击引用块后滚动到被引用消息。 */
+    fun findRowPositionOfMessage(messageId: Long): Int = rowIndexOf(messageId)
+
+    /**
+     * 点亮 / 熄灭定位高亮：只刷新新旧两条消息，避免整表重绑。
+     * 熄灭由主页计时器触发，与点亮走同一条通道。
+     */
+    fun setHighlightMessageId(messageId: Long?) {
+        if (highlightMessageId == messageId) return
+        val previous = highlightMessageId
+        highlightMessageId = messageId
+        listOfNotNull(previous, messageId).forEach { id ->
+            val position = rowIndexOf(id)
+            if (position >= 0) notifyItemChanged(position, PAYLOAD_HIGHLIGHT)
+        }
+    }
+
     private fun notifyMessage(messageId: Long) {
         val position = rowIndexOf(messageId)
         if (position >= 0) notifyItemChanged(position, PAYLOAD_ACTIONS)
@@ -380,6 +414,7 @@ class ChatMessageAdapter(
         private val binding: ItemMessageUserBinding,
         private val onLongPress: (ChatMessage, View) -> Unit,
         private val onItemClick: (ChatMessage) -> Unit,
+        private val onReplyQuoteClick: (ChatMessage) -> Unit,
     ) : RecyclerView.ViewHolder(binding.root) {
         private var current: ChatMessage? = null
 
@@ -392,17 +427,23 @@ class ChatMessageAdapter(
                 onLongPress(message, binding.messageText)
                 true
             }
+            // 点击引用块：定位到被引用的消息。
+            binding.replyQuote.root.setOnClickListener {
+                current?.let(onReplyQuoteClick)
+            }
         }
 
         fun bind(
             message: ChatMessage,
             selectionMode: Boolean,
             selected: Boolean,
+            highlighted: Boolean,
         ) {
             current = message
             binding.messageText.text = message.content
             bindReplyQuote(message)
             bindSelection(message, selectionMode, selected)
+            bindHighlight(message, highlighted)
         }
 
         /** 多选视觉：指示器显隐 + 气泡选中态。 */
@@ -412,6 +453,13 @@ class ChatMessageAdapter(
             binding.messageSelectIndicator.visibility =
                 if (showIndicator) View.VISIBLE else View.GONE
             binding.messageText.isActivated = selected
+        }
+
+        /** 定位高亮：整行短暂泛起浅蓝带，未高亮时恢复透明。 */
+        fun bindHighlight(message: ChatMessage, highlighted: Boolean) {
+            binding.root.setBackgroundResource(
+                if (highlighted) R.drawable.bg_message_flash else 0,
+            )
         }
 
         /** 有引用才显示引用块，无引用时彻底隐藏，不占位。 */
@@ -438,6 +486,7 @@ class ChatMessageAdapter(
         private val onAction: (MessageAction, ChatMessage) -> Unit,
         private val onLongPress: (ChatMessage, View) -> Unit,
         private val onItemClick: (ChatMessage) -> Unit,
+        private val onReplyQuoteClick: (ChatMessage) -> Unit,
     ) : RecyclerView.ViewHolder(binding.root) {
         private var current: ChatMessage? = null
 
@@ -472,6 +521,10 @@ class ChatMessageAdapter(
             binding.speakButton.setOnClickListener {
                 current?.let { onAction(MessageAction.SPEAK, it) }
             }
+            // 点击引用块：定位到被引用的消息。
+            binding.replyQuote.root.setOnClickListener {
+                current?.let(onReplyQuoteClick)
+            }
         }
 
         fun bind(
@@ -483,6 +536,7 @@ class ChatMessageAdapter(
             speaking: Boolean,
             selectionMode: Boolean,
             selected: Boolean,
+            highlighted: Boolean,
         ) {
             current = message
             binding.assistantLogo.visibility = if (showLogo) View.VISIBLE else View.GONE
@@ -495,6 +549,7 @@ class ChatMessageAdapter(
 
             bindActions(showActions, liked, disliked, speaking)
             bindSelection(message, selectionMode, selected)
+            bindHighlight(message, highlighted)
         }
 
         /** 多选视觉：指示器显隐 + 文本选中态。 */
@@ -504,6 +559,13 @@ class ChatMessageAdapter(
             binding.messageSelectIndicator.visibility =
                 if (showIndicator) View.VISIBLE else View.GONE
             binding.messageText.isActivated = selected
+        }
+
+        /** 定位高亮：整行短暂泛起浅蓝带，未高亮时恢复透明。 */
+        fun bindHighlight(message: ChatMessage, highlighted: Boolean) {
+            binding.root.setBackgroundResource(
+                if (highlighted) R.drawable.bg_message_flash else 0,
+            )
         }
 
         /** 只更新操作栏（点赞 / 点踩 / 朗读状态变化时调用，不重新渲染正文）。 */
@@ -627,6 +689,9 @@ class ChatMessageAdapter(
 
         /** 只刷新多选选中态的局部更新标记。 */
         private val PAYLOAD_SELECTION = Any()
+
+        /** 只刷新定位高亮（点击引用块跳到被引用消息）的局部更新标记。 */
+        private val PAYLOAD_HIGHLIGHT = Any()
 
         private const val VIEW_TYPE_USER = 1
         private const val VIEW_TYPE_ASSISTANT = 2

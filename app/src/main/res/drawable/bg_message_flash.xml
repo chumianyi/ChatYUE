@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 定位高亮：点击引用块跳到被引用消息时，整行短暂泛起的浅蓝色带。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/ds_blue_soft" />
+    <corners android:radius="10dp" />
+</shape>

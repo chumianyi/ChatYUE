@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -54,6 +54,7 @@ jobs:
       - name: Collect APK
         run: |
           VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           cd app/build/outputs/apk/release
           for f in *.apk; do
             case "$f" in ChatYUE-*) continue;; esac
@@ -67,6 +68,33 @@ jobs:
           name: ChatYUE-release-apk
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+
+      # 把 APK 提交到 apk-release 分支，供自动更新链路与离线分发拉取。
+      - name: 发布 APK 到 apk-release 分支
+        run: |
+          APK="app/build/outputs/apk/release/ChatYUE-${VERSION}-release.apk"
+          test -f "$APK"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan apk-release
+          git rm -rf --cached . >/dev/null
+          rm -rf app .github gradle .gitignore *.md *.properties *.txt settings.gradle.kts 2>/dev/null || true
+          cp "$APK" .
+          git add "ChatYUE-${VERSION}-release.apk"
+          git commit -m "release: ChatYUE ${VERSION}"
+          git push -f origin apk-release
+
+      # 正式发版：附带签名 APK 的 GitHub Release（runner 自带 gh CLI）。
+      - name: 发布 GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            gh release upload "v$VERSION" app/build/outputs/apk/release/*.apk --clobber
+          else
+            gh release create "v$VERSION" app/build/outputs/apk/release/*.apk \
+              --title "ChatYUE ${VERSION}" --latest
+          fi
 
       - name: Upload unit test report
         if: always()
