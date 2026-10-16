@@ -23,7 +23,7 @@ enum class MessageAction {
 class ChatMessageAdapter(
     private val markwon: Markwon,
     private val onAction: (MessageAction, ChatMessage) -> Unit,
-    private val onLongPress: (ChatMessage, View) -> Unit,
+    private val onLongPress: (ChatMessage, View) -> Unit = { _, _ -> },
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private val messages = mutableListOf<ChatMessage>()
     private val collapsedThinkingIds = mutableSetOf<Long>()
