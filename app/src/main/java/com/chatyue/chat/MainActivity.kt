@@ -56,6 +56,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var repository: LocalChatRepository
     private lateinit var messageAdapter: ChatMessageAdapter
     private lateinit var conversationAdapter: ConversationAdapter
+    private lateinit var draftStore: DraftStore
 
     /** 启动消息搜索页，返回用户选中的会话并打开。 */
     private val searchLauncher = registerForActivityResult(
@@ -132,6 +133,7 @@ class MainActivity : AppCompatActivity() {
 
         viewModel = ViewModelProvider(this)[ChatViewModel::class.java]
         repository = viewModel.repository
+        draftStore = DraftStore(this)
 
         configureSystemBars()
         configureDrawer()
@@ -170,6 +172,12 @@ class MainActivity : AppCompatActivity() {
         super.onStart()
         // 2.0：每次回到前台都静默补检一次版本。
         versionGuard?.start()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // 退到后台前把未发送输入存进草稿箱，防止进程被回收后丢内容。
+        if (initialized) saveCurrentDraft()
     }
 
     override fun onDestroy() {
@@ -552,6 +560,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // ---------------- 草稿箱 ----------------
+
+    /** 把当前输入框内容存为当前会话的草稿（空内容即清键）。 */
+    private fun saveCurrentDraft() {
+        if (!initialized) return
+        draftStore.save(
+            currentConversationId,
+            binding.messageInput.text?.toString().orEmpty(),
+        )
+    }
+
+    /** 恢复当前会话的草稿到输入框，光标落到末尾。 */
+    private fun restoreDraft() {
+        val draft = draftStore.load(currentConversationId)
+        binding.messageInput.setText(draft)
+        binding.messageInput.setSelection(draft.length)
+        updateSendButton()
+    }
+
     private fun sendMessage() {
         val rawInput = binding.messageInput.text?.toString()?.trim().orEmpty()
         if (rawInput.isEmpty() && !hasAttachment()) return
@@ -588,6 +615,8 @@ class MainActivity : AppCompatActivity() {
         binding.messageInput.text?.clear()
         clearAttachments()
         clearReply()
+        // 草稿已转为正式消息，清掉该会话的草稿键。
+        draftStore.clear(conversationId)
         followStreaming = true
         pendingStreamingState = null
         pendingMessageReloadConversationId = null
@@ -595,7 +624,6 @@ class MainActivity : AppCompatActivity() {
 
         dispatchChatRequest(conversationId)
     }
-
     private fun dispatchChatRequest(conversationId: Long) {
         val messages = buildList {
             // 2.0 全局记忆：全局模式会话会注入其他全局会话的历史作为 system 记忆。
@@ -667,6 +695,8 @@ class MainActivity : AppCompatActivity() {
                 loadMessages(restoredConversation.id)
             }
             restoreReplyTarget(savedInstanceState)
+            // 回到上次会话时把草稿放回输入框（旋转、杀进程重进都适用）。
+            restoreDraft()
         }
     }
 
@@ -683,6 +713,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showNewConversation() {
+        // 先把旧会话的未发送输入存成草稿，再切到新会话。
+        saveCurrentDraft()
         stopGeneration(showNotice = false)
         currentConversationId = null
         followStreaming = true
@@ -693,6 +725,7 @@ class MainActivity : AppCompatActivity() {
         clearAttachments()
         clearReply()
         exitMessageSelection()
+        restoreDraft()
         showMessages(emptyList())
         hideKeyboard()
         refreshConversationList(binding.searchInput.text?.toString().orEmpty())
@@ -771,6 +804,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun selectConversation(conversation: Conversation) {
+        // 切走前保存旧会话草稿，进入后恢复新会话草稿。
+        saveCurrentDraft()
         stopGeneration(showNotice = false)
         currentConversationId = conversation.id
         followStreaming = true
@@ -783,6 +818,7 @@ class MainActivity : AppCompatActivity() {
         refreshConversationList(binding.searchInput.text?.toString().orEmpty())
         clearReply()
         exitMessageSelection()
+        restoreDraft()
     }
 
     private fun loadMessages(
@@ -1025,6 +1061,8 @@ class MainActivity : AppCompatActivity() {
             .setMessage(R.string.confirm_delete_conversation)
             .setPositiveButton(R.string.action_delete_conversation) { _, _ ->
                 repository.deleteConversation(conversation.id)
+                // 删除会话后其草稿一并清掉，避免磁盘里残留无效键。
+                draftStore.clear(conversation.id)
                 // 若删除的正是当前会话，回到新建对话状态。
                 if (currentConversationId == conversation.id) {
                     showNewConversation()
@@ -1173,6 +1211,7 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton(R.string.clear) { _, _ ->
                 stopGeneration(showNotice = false)
                 repository.clearAll()
+                draftStore.clearAll()
                 binding.searchInput.text?.clear()
                 showNewConversation()
                 binding.drawerLayout.closeDrawer(GravityCompat.START)
@@ -1389,6 +1428,7 @@ class MainActivity : AppCompatActivity() {
             stopGeneration(showNotice = false)
         }
         val conversationId = message.conversationId
+        saveCurrentDraft()
         val messages = repository.getMessages(conversationId)
         val anchorId = if (message.role == MessageRole.USER) {
             message.id
@@ -1414,6 +1454,7 @@ class MainActivity : AppCompatActivity() {
         pendingStreamingState = null
         pendingMessageReloadConversationId = null
         loadMessages(conversationId)
+        restoreDraft()
         dispatchChatRequest(conversationId)
         CompatToast.show(this, R.string.action_regenerate_started)
     }
