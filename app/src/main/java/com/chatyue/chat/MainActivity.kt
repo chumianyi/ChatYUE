@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
 import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -53,6 +54,18 @@ class MainActivity : AppCompatActivity() {
     private lateinit var repository: LocalChatRepository
     private lateinit var messageAdapter: ChatMessageAdapter
     private lateinit var conversationAdapter: ConversationAdapter
+
+    /** 启动消息搜索页，返回用户选中的会话并打开。 */
+    private val searchLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val id = result.data
+                ?.getLongExtra(MessageSearchActivity.EXTRA_OPEN_CONVERSATION, -1L)
+                ?: -1L
+            if (id > 0) openConversationById(id)
+        }
+    }
 
     /** onCreate 可能因「未同意协议」提前返回，用它避免 onDestroy 访问未初始化的字段。 */
     private var initialized = false
@@ -226,7 +239,7 @@ class MainActivity : AppCompatActivity() {
             })
         }
 
-        conversationAdapter = ConversationAdapter(::selectConversation)
+        conversationAdapter = ConversationAdapter(::selectConversation, ::onConversationLongPress)
         binding.conversationList.apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = conversationAdapter
@@ -690,6 +703,12 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    private fun openConversationById(conversationId: Long) {
+        val conversation = repository.getConversation(conversationId) ?: return
+        selectConversation(conversation)
+        binding.drawerLayout.closeDrawer(GravityCompat.START)
+    }
+
     private fun selectConversation(conversation: Conversation) {
         stopGeneration(showNotice = false)
         currentConversationId = conversation.id
@@ -840,10 +859,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshConversationList(query: String = "") {
+        // 仓储层已按「置顶优先 + 更新时间倒序」返回，这里再把置顶会话归入独立分组。
         val conversations = repository.getConversations(query)
         val items = mutableListOf<DrawerItem>()
+        val pinned = conversations.filter { it.pinned }
+        val rest = conversations.filterNot { it.pinned }
+        if (pinned.isNotEmpty()) {
+            items += DrawerItem.Section(ConversationSection.PINNED)
+            pinned.forEach { items += DrawerItem.Entry(it) }
+        }
         var previousSection: ConversationSection? = null
-        conversations.forEach { conversation ->
+        rest.forEach { conversation ->
             val section = ConversationFormatter.sectionFor(conversation.updatedAt)
             if (section != previousSection) {
                 items += DrawerItem.Section(section)
@@ -852,6 +878,93 @@ class MainActivity : AppCompatActivity() {
             items += DrawerItem.Entry(conversation)
         }
         conversationAdapter.submitItems(items, currentConversationId)
+    }
+
+    /** 长按侧边栏会话：置顶 / 取消置顶、重命名、删除。 */
+    private fun onConversationLongPress(conversation: Conversation, anchor: View) {
+        val pinLabel = if (conversation.pinned) {
+            R.string.action_unpin
+        } else {
+            R.string.action_pin
+        }
+        PopupMenu(this, anchor).apply {
+            menu.add(0, MENU_CONV_PIN, 0, pinLabel)
+            menu.add(0, MENU_CONV_RENAME, 1, R.string.action_rename_conversation)
+            menu.add(0, MENU_CONV_DELETE, 2, R.string.action_delete_conversation)
+            setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    MENU_CONV_PIN -> {
+                        togglePin(conversation)
+                        true
+                    }
+
+                    MENU_CONV_RENAME -> {
+                        showRenameDialog(conversation)
+                        true
+                    }
+
+                    MENU_CONV_DELETE -> {
+                        confirmDeleteConversation(conversation)
+                        true
+                    }
+
+                    else -> false
+                }
+            }
+        }.show()
+    }
+
+    private fun togglePin(conversation: Conversation) {
+        val pinned = !conversation.pinned
+        repository.setConversationPinned(conversation.id, pinned)
+        refreshConversationList(binding.searchInput.text?.toString().orEmpty())
+        CompatToast.show(
+            this,
+            if (pinned) R.string.toast_conversation_pinned else R.string.toast_conversation_unpinned,
+        )
+    }
+
+    private fun showRenameDialog(conversation: Conversation) {
+        val input = EditText(this).apply {
+            setText(conversation.title)
+            setSelection(text.length)
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.rename_conversation_title)
+            .setMessage(R.string.rename_conversation_hint)
+            .setView(input)
+            .setPositiveButton(R.string.action_confirm) { _, _ ->
+                val title = input.text?.toString()?.trim().orEmpty()
+                if (title.isEmpty()) {
+                    CompatToast.show(this, R.string.rename_empty_title)
+                    return@setPositiveButton
+                }
+                repository.updateConversationTitle(conversation.id, title)
+                if (currentConversationId == conversation.id) {
+                    binding.chatTitle.text = title
+                }
+                refreshConversationList(binding.searchInput.text?.toString().orEmpty())
+                CompatToast.show(this, R.string.toast_conversation_renamed)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun confirmDeleteConversation(conversation: Conversation) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.confirm_delete_conversation_title)
+            .setMessage(R.string.confirm_delete_conversation)
+            .setPositiveButton(R.string.action_delete_conversation) { _, _ ->
+                repository.deleteConversation(conversation.id)
+                // 若删除的正是当前会话，回到新建对话状态。
+                if (currentConversationId == conversation.id) {
+                    showNewConversation()
+                }
+                refreshConversationList(binding.searchInput.text?.toString().orEmpty())
+                CompatToast.show(this, R.string.toast_conversation_deleted)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     // ---------------- 菜单 ----------------
@@ -863,6 +976,7 @@ class MainActivity : AppCompatActivity() {
             menu.add(0, MENU_SETTINGS, 2, R.string.menu_settings)
             menu.add(0, MENU_ABOUT, 3, R.string.about_menu)
             menu.add(0, MENU_CLEAR_HISTORY, 4, R.string.clear_history)
+            menu.add(0, MENU_SEARCH_MESSAGES, 5, R.string.menu_search_messages)
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     MENU_CHANGELOG -> {
@@ -887,6 +1001,13 @@ class MainActivity : AppCompatActivity() {
 
                     MENU_CLEAR_HISTORY -> {
                         confirmClearHistory()
+                        true
+                    }
+
+                    MENU_SEARCH_MESSAGES -> {
+                        searchLauncher.launch(
+                            Intent(this@MainActivity, MessageSearchActivity::class.java),
+                        )
                         true
                     }
 
@@ -1201,6 +1322,10 @@ class MainActivity : AppCompatActivity() {
         private const val MENU_COPY_ITEM = 100
         private const val MENU_REGENERATE_ITEM = 101
         private const val MENU_DELETE_ITEM = 102
+        private const val MENU_CONV_PIN = 200
+        private const val MENU_CONV_RENAME = 201
+        private const val MENU_CONV_DELETE = 202
+        private const val MENU_SEARCH_MESSAGES = 6
         private const val STREAM_THINKING_ID = -1L
         private const val STREAM_ASSISTANT_ID = -2L
 

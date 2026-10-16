@@ -20,6 +20,7 @@ data class Conversation(
     val title: String,
     val updatedAt: Long,
     val memoryMode: ConversationMemoryMode = ConversationMemoryMode.GLOBAL,
+    val pinned: Boolean = false,
 )
 
 enum class MessageRole {
@@ -47,8 +48,25 @@ data class ChatMessage(
     val createdAt: Long,
 )
 
+/**
+ * 跨会话消息搜索的一条命中结果。
+ *
+ * 只搜索用户与助手的正文，思考过程与压缩摘要不计入。
+ */
+data class MessageHit(
+    val messageId: Long,
+    val conversationId: Long,
+    val conversationTitle: String,
+    val role: MessageRole,
+    val content: String,
+    val createdAt: Long,
+)
+
 /** 侧边栏会话按时间由近到远分组。 */
 enum class ConversationSection {
+    /** 置顶会话，固定排在最前。 */
+    PINNED,
+
     TODAY,
     YESTERDAY,
     LAST_7_DAYS,

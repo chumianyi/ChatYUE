@@ -61,4 +61,18 @@ interface ChatRepository {
     )
 
     fun clearAll()
+
+    /** 置顶 / 取消置顶会话。 */
+    fun setConversationPinned(conversationId: Long, pinned: Boolean)
+
+    /** 删除会话及其全部消息，返回被删除会话的标题（供提示使用）。 */
+    fun deleteConversation(conversationId: Long): String?
+
+    /**
+     * 跨会话搜索消息正文（仅用户与助手消息），按时间倒序返回命中列表。
+     *
+     * @param query 关键词，空字符串返回空列表。
+     * @param limit 最多返回的条数。
+     */
+    fun searchMessages(query: String, limit: Int = 100): List<MessageHit>
 }

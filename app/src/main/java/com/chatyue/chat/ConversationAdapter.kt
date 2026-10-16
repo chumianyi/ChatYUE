@@ -1,6 +1,7 @@
 package com.chatyue.chat
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.chatyue.chat.databinding.ItemConversationBinding
@@ -8,6 +9,7 @@ import com.chatyue.chat.databinding.ItemSectionHeaderBinding
 
 class ConversationAdapter(
     private val onConversationSelected: (Conversation) -> Unit,
+    private val onConversationLongPress: (Conversation, View) -> Unit,
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val items = mutableListOf<DrawerItem>()
@@ -33,6 +35,7 @@ class ConversationAdapter(
                 ConversationViewHolder(
                     ItemConversationBinding.inflate(inflater, parent, false),
                     onConversationSelected,
+                    onConversationLongPress,
                 )
             }
         }
@@ -68,6 +71,7 @@ class ConversationAdapter(
         fun bind(section: ConversationSection) {
             binding.sectionTitle.setText(
                 when (section) {
+                    ConversationSection.PINNED -> R.string.section_pinned
                     ConversationSection.TODAY -> R.string.section_today
                     ConversationSection.YESTERDAY -> R.string.section_yesterday
                     ConversationSection.LAST_7_DAYS -> R.string.section_last_7_days
@@ -81,6 +85,7 @@ class ConversationAdapter(
     private class ConversationViewHolder(
         private val binding: ItemConversationBinding,
         private val onConversationSelected: (Conversation) -> Unit,
+        private val onConversationLongPress: (Conversation, View) -> Unit,
     ) : RecyclerView.ViewHolder(binding.root) {
         private var conversation: Conversation? = null
 
@@ -88,12 +93,20 @@ class ConversationAdapter(
             binding.root.setOnClickListener {
                 conversation?.let(onConversationSelected)
             }
+            binding.root.setOnLongClickListener {
+                conversation?.let { item ->
+                    onConversationLongPress(item, binding.root)
+                }
+                true
+            }
         }
 
         fun bind(item: Conversation, isSelected: Boolean) {
             conversation = item
+            binding.root.isActivated = isSelected
             binding.conversationTitle.text = item.title
-            binding.conversationTitle.isActivated = isSelected
+            binding.conversationPinned.visibility =
+                if (item.pinned) View.VISIBLE else View.GONE
         }
     }
 

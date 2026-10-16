@@ -21,7 +21,8 @@ class LocalChatRepository(context: Context) :
                 $COLUMN_ID INTEGER PRIMARY KEY AUTOINCREMENT,
                 $COLUMN_TITLE TEXT NOT NULL,
                 $COLUMN_UPDATED_AT INTEGER NOT NULL,
-                $COLUMN_MEMORY_MODE TEXT NOT NULL DEFAULT 'GLOBAL'
+                $COLUMN_MEMORY_MODE TEXT NOT NULL DEFAULT 'GLOBAL',
+                $COLUMN_PINNED INTEGER NOT NULL DEFAULT 0
             )
             """.trimIndent(),
         )
@@ -56,6 +57,13 @@ class LocalChatRepository(context: Context) :
             db.execSQL(
                 "ALTER TABLE $TABLE_CONVERSATIONS ADD COLUMN " +
                     "$COLUMN_MEMORY_MODE TEXT NOT NULL DEFAULT 'GLOBAL'",
+            )
+        }
+        if (oldVersion < 3) {
+            // 2 -> 3：会话表新增「置顶」列，老会话默认不置顶。
+            db.execSQL(
+                "ALTER TABLE $TABLE_CONVERSATIONS ADD COLUMN " +
+                    "$COLUMN_PINNED INTEGER NOT NULL DEFAULT 0",
             )
         }
     }
@@ -121,7 +129,8 @@ class LocalChatRepository(context: Context) :
                     c.$COLUMN_ID,
                     c.$COLUMN_TITLE,
                     c.$COLUMN_UPDATED_AT,
-                    c.$COLUMN_MEMORY_MODE
+                    c.$COLUMN_MEMORY_MODE,
+                    c.$COLUMN_PINNED
                 FROM $TABLE_CONVERSATIONS c
                 LEFT JOIN $TABLE_MESSAGES m
                     ON c.$COLUMN_ID = m.$COLUMN_CONVERSATION_ID
@@ -131,7 +140,7 @@ class LocalChatRepository(context: Context) :
                 append(" WHERE ")
                 append(selection)
             }
-            append(" ORDER BY c.$COLUMN_UPDATED_AT DESC")
+            append(" ORDER BY c.$COLUMN_PINNED DESC, c.$COLUMN_UPDATED_AT DESC")
         }
 
         return readableDatabase.rawQuery(sql, selectionArgs).use { cursor ->
@@ -140,6 +149,7 @@ class LocalChatRepository(context: Context) :
                 val titleIndex = cursor.getColumnIndexOrThrow(COLUMN_TITLE)
                 val updatedAtIndex = cursor.getColumnIndexOrThrow(COLUMN_UPDATED_AT)
                 val memoryModeIndex = cursor.getColumnIndexOrThrow(COLUMN_MEMORY_MODE)
+                val pinnedIndex = cursor.getColumnIndexOrThrow(COLUMN_PINNED)
                 while (cursor.moveToNext()) {
                     add(
                         Conversation(
@@ -149,6 +159,7 @@ class LocalChatRepository(context: Context) :
                             memoryMode = ConversationMemoryMode.fromName(
                                 cursor.getString(memoryModeIndex),
                             ),
+                            pinned = cursor.getInt(pinnedIndex) == 1,
                         ),
                     )
                 }
@@ -159,7 +170,7 @@ class LocalChatRepository(context: Context) :
     override fun getConversation(conversationId: Long): Conversation? {
         return readableDatabase.query(
             TABLE_CONVERSATIONS,
-            arrayOf(COLUMN_ID, COLUMN_TITLE, COLUMN_UPDATED_AT, COLUMN_MEMORY_MODE),
+            arrayOf(COLUMN_ID, COLUMN_TITLE, COLUMN_UPDATED_AT, COLUMN_MEMORY_MODE, COLUMN_PINNED),
             "$COLUMN_ID = ?",
             arrayOf(conversationId.toString()),
             null,
@@ -175,6 +186,7 @@ class LocalChatRepository(context: Context) :
                 memoryMode = ConversationMemoryMode.fromName(
                     cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MEMORY_MODE)),
                 ),
+                pinned = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_PINNED)) == 1,
             )
         }
     }
@@ -244,6 +256,53 @@ class LocalChatRepository(context: Context) :
                         ChatMessage(
                             id = cursor.getLong(idIndex),
                             conversationId = cursor.getLong(conversationIndex),
+                            role = MessageRole.valueOf(cursor.getString(roleIndex)),
+                            content = cursor.getString(contentIndex),
+                            createdAt = cursor.getLong(createdAtIndex),
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    override fun searchMessages(query: String, limit: Int): List<MessageHit> {
+        val normalized = query.trim()
+        if (normalized.isEmpty()) return emptyList()
+        val likeQuery = "%${escapeLike(normalized)}%"
+        val sql = """
+            SELECT m.$COLUMN_ID, m.$COLUMN_CONVERSATION_ID, m.$COLUMN_ROLE,
+                   m.$COLUMN_CONTENT, m.$COLUMN_CREATED_AT, c.$COLUMN_TITLE
+            FROM $TABLE_MESSAGES m
+            INNER JOIN $TABLE_CONVERSATIONS c
+                ON m.$COLUMN_CONVERSATION_ID = c.$COLUMN_ID
+            WHERE m.$COLUMN_CONTENT LIKE ? ESCAPE '\'
+              AND m.$COLUMN_ROLE IN (?, ?)
+            ORDER BY m.$COLUMN_CREATED_AT DESC
+            LIMIT ?
+        """.trimIndent()
+        return readableDatabase.rawQuery(
+            sql,
+            arrayOf(
+                likeQuery,
+                MessageRole.USER.name,
+                MessageRole.ASSISTANT.name,
+                limit.toString(),
+            ),
+        ).use { cursor ->
+            buildList {
+                val idIndex = cursor.getColumnIndexOrThrow(COLUMN_ID)
+                val conversationIndex = cursor.getColumnIndexOrThrow(COLUMN_CONVERSATION_ID)
+                val roleIndex = cursor.getColumnIndexOrThrow(COLUMN_ROLE)
+                val contentIndex = cursor.getColumnIndexOrThrow(COLUMN_CONTENT)
+                val createdAtIndex = cursor.getColumnIndexOrThrow(COLUMN_CREATED_AT)
+                val titleIndex = cursor.getColumnIndexOrThrow(COLUMN_TITLE)
+                while (cursor.moveToNext()) {
+                    add(
+                        MessageHit(
+                            messageId = cursor.getLong(idIndex),
+                            conversationId = cursor.getLong(conversationIndex),
+                            conversationTitle = cursor.getString(titleIndex),
                             role = MessageRole.valueOf(cursor.getString(roleIndex)),
                             content = cursor.getString(contentIndex),
                             createdAt = cursor.getLong(createdAtIndex),
@@ -395,6 +454,48 @@ class LocalChatRepository(context: Context) :
         }
     }
 
+    override fun setConversationPinned(conversationId: Long, pinned: Boolean) {
+        writableDatabase.update(
+            TABLE_CONVERSATIONS,
+            ContentValues().apply { put(COLUMN_PINNED, if (pinned) 1 else 0) },
+            "$COLUMN_ID = ?",
+            arrayOf(conversationId.toString()),
+        )
+    }
+
+    override fun deleteConversation(conversationId: Long): String? {
+        val title = readableDatabase.query(
+            TABLE_CONVERSATIONS,
+            arrayOf(COLUMN_TITLE),
+            "$COLUMN_ID = ?",
+            arrayOf(conversationId.toString()),
+            null,
+            null,
+            null,
+            "1",
+        ).use { cursor ->
+            if (cursor.moveToFirst()) {
+                cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TITLE))
+            } else {
+                null
+            }
+        }
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            // 消息表已配置 ON DELETE CASCADE，删会话即级联清空其全部消息。
+            db.delete(
+                TABLE_CONVERSATIONS,
+                "$COLUMN_ID = ?",
+                arrayOf(conversationId.toString()),
+            )
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        return title
+    }
+
     override fun clearAll() {
         val db = writableDatabase
         db.beginTransaction()
@@ -416,7 +517,7 @@ class LocalChatRepository(context: Context) :
 
     companion object {
         private const val DATABASE_NAME = "chatyue.db"
-        private const val DATABASE_VERSION = 2
+        private const val DATABASE_VERSION = 3
         private const val SUMMARY_CREATED_AT = 1L
 
         private const val TABLE_CONVERSATIONS = "conversations"
@@ -425,6 +526,7 @@ class LocalChatRepository(context: Context) :
         private const val COLUMN_TITLE = "title"
         private const val COLUMN_UPDATED_AT = "updated_at"
         private const val COLUMN_MEMORY_MODE = "memory_mode"
+        private const val COLUMN_PINNED = "pinned"
         private const val COLUMN_CONVERSATION_ID = "conversation_id"
         private const val COLUMN_ROLE = "role"
         private const val COLUMN_CONTENT = "content"
