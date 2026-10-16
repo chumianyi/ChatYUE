@@ -12,6 +12,7 @@ import com.chatyue.chat.databinding.ItemMessageAssistantBinding
 import com.chatyue.chat.databinding.ItemMessageSummaryBinding
 import com.chatyue.chat.databinding.ItemMessageThinkingBinding
 import com.chatyue.chat.databinding.ItemMessageUserBinding
+import com.chatyue.chat.databinding.ItemTimeDividerBinding
 
 /** 消息底部的操作按钮。 */
 enum class MessageAction {
@@ -27,8 +28,13 @@ class ChatMessageAdapter(
     private val onLongPress: (ChatMessage, View) -> Unit = { _, _ -> },
     private val onSelectionCountChanged: (Int) -> Unit = {},
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-    private val messages = mutableListOf<ChatMessage>()
+    /** 列表行：消息与按天分隔的时间条混排，提交时由 ChatTimeDivider 统一生成。 */
+    private val rows = mutableListOf<ChatRow>()
     private val collapsedThinkingIds = mutableSetOf<Long>()
+
+    /** 当前行中的消息列表（仅消息行，按列表顺序）。 */
+    private val messages: List<ChatMessage>
+        get() = rows.filterIsInstance<ChatRow.Message>().map { it.message }
 
     /** 当前正在流式输出的回答 id，它的操作栏暂时不显示。 */
     private var streamingMessageId: Long? = null
@@ -48,16 +54,21 @@ class ChatMessageAdapter(
         setHasStableIds(true)
     }
 
-    override fun getItemId(position: Int): Long = messages[position].id
+    override fun getItemId(position: Int): Long = when (val row = rows[position]) {
+        is ChatRow.Message -> row.message.id
+        is ChatRow.Divider -> row.id
+    }
 
-    override fun getItemViewType(position: Int): Int {
-        return when (messages[position].role) {
+    override fun getItemViewType(position: Int): Int = when (val row = rows[position]) {
+        is ChatRow.Message -> when (row.message.role) {
             MessageRole.USER -> VIEW_TYPE_USER
             MessageRole.ASSISTANT -> VIEW_TYPE_ASSISTANT
             MessageRole.SYSTEM -> VIEW_TYPE_SUMMARY
             MessageRole.THINKING_ACTIVE,
             MessageRole.THINKING_FINISHED -> VIEW_TYPE_THINKING
         }
+
+        is ChatRow.Divider -> VIEW_TYPE_DIVIDER
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
@@ -85,6 +96,10 @@ class ChatMessageAdapter(
                 )
             }
 
+            VIEW_TYPE_DIVIDER -> {
+                TimeDividerViewHolder(ItemTimeDividerBinding.inflate(inflater, parent, false))
+            }
+
             else -> {
                 AssistantMessageViewHolder(
                     ItemMessageAssistantBinding.inflate(inflater, parent, false),
@@ -98,7 +113,14 @@ class ChatMessageAdapter(
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        val message = messages[position]
+        when (val row = rows[position]) {
+            is ChatRow.Message -> bindMessageRow(holder, row.message, position)
+
+            is ChatRow.Divider -> (holder as TimeDividerViewHolder).bind(row.label)
+        }
+    }
+
+    private fun bindMessageRow(holder: RecyclerView.ViewHolder, message: ChatMessage, position: Int) {
         when (holder) {
             is UserMessageViewHolder -> holder.bind(
                 message,
@@ -107,9 +129,10 @@ class ChatMessageAdapter(
             )
 
             is AssistantMessageViewHolder -> {
-                val followsThinking = position > 0 &&
-                    (messages[position - 1].role == MessageRole.THINKING_FINISHED ||
-                        messages[position - 1].role == MessageRole.THINKING_ACTIVE)
+                val previousRow = rows.getOrNull(position - 1)
+                val followsThinking = previousRow is ChatRow.Message &&
+                    (previousRow.message.role == MessageRole.THINKING_FINISHED ||
+                        previousRow.message.role == MessageRole.THINKING_ACTIVE)
                 holder.bind(
                     message = message,
                     showLogo = !followsThinking,
@@ -128,6 +151,8 @@ class ChatMessageAdapter(
             }
 
             is SummaryMessageViewHolder -> holder.bind(message)
+
+            is TimeDividerViewHolder -> Unit
         }
     }
 
@@ -136,7 +161,22 @@ class ChatMessageAdapter(
         position: Int,
         payloads: MutableList<Any>,
     ) {
-        val message = messages[position]
+        when (val row = rows[position]) {
+            is ChatRow.Message -> bindMessageRowPayload(holder, row.message, position, payloads)
+
+            is ChatRow.Divider -> {
+                // 分隔条只有文字，没有局部刷新诉求，交给整行重绑。
+                super.onBindViewHolder(holder, position, payloads)
+            }
+        }
+    }
+
+    private fun bindMessageRowPayload(
+        holder: RecyclerView.ViewHolder,
+        message: ChatMessage,
+        position: Int,
+        payloads: MutableList<Any>,
+    ) {
         // 局部刷新：点赞 / 点踩变化或选中状态变化时，避免重新解析 Markdown，防止长回答卡顿。
         if (payloads.isNotEmpty()) {
             var handled = false
@@ -165,25 +205,33 @@ class ChatMessageAdapter(
         super.onBindViewHolder(holder, position, payloads)
     }
 
-    override fun getItemCount(): Int = messages.size
+    override fun getItemCount(): Int = rows.size
 
     fun submitMessages(newMessages: List<ChatMessage>) {
-        val oldMessages = messages.toList()
+        val oldRows = rows.toList()
+        val newRows = ChatTimeDivider.buildRows(newMessages)
         val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
-            override fun getOldListSize(): Int = oldMessages.size
+            override fun getOldListSize(): Int = oldRows.size
 
-            override fun getNewListSize(): Int = newMessages.size
+            override fun getNewListSize(): Int = newRows.size
 
             override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
-                return oldMessages[oldItemPosition].id == newMessages[newItemPosition].id
+                val old = oldRows[oldItemPosition]
+                val new = newRows[newItemPosition]
+                return when {
+                    old is ChatRow.Message && new is ChatRow.Message ->
+                        old.message.id == new.message.id
+
+                    old is ChatRow.Divider && new is ChatRow.Divider -> old.id == new.id
+                    else -> false
+                }
             }
 
-            override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
-                return oldMessages[oldItemPosition] == newMessages[newItemPosition]
-            }
+            override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
+                oldRows[oldItemPosition] == newRows[newItemPosition]
         })
-        messages.clear()
-        messages.addAll(newMessages)
+        rows.clear()
+        rows.addAll(newRows)
         // 被删除的消息如果还在选中集合里，一并清掉，避免统计虚高。
         selectedIds.retainAll(newMessages.map { it.id }.toSet())
         collapsedThinkingIds.retainAll(
@@ -203,8 +251,8 @@ class ChatMessageAdapter(
         if (streamingMessageId == messageId) return
         streamingMessageId = messageId
         // 只有 AI 回答带操作栏，逐项刷新即可，不必整表重绑。
-        messages.forEachIndexed { index, message ->
-            if (message.role == MessageRole.ASSISTANT) {
+        rows.forEachIndexed { index, row ->
+            if (row is ChatRow.Message && row.message.role == MessageRole.ASSISTANT) {
                 notifyItemChanged(index, PAYLOAD_ACTIONS)
             }
         }
@@ -220,7 +268,7 @@ class ChatMessageAdapter(
         val previous = speakingMessageId
         speakingMessageId = messageId
         listOfNotNull(previous, messageId).forEach { id ->
-            val position = messages.indexOfFirst { it.id == id }
+            val position = rowIndexOf(id)
             if (position >= 0) notifyItemChanged(position, PAYLOAD_ACTIONS)
         }
     }
@@ -303,16 +351,20 @@ class ChatMessageAdapter(
         message.role == MessageRole.USER || message.role == MessageRole.ASSISTANT
 
     private fun refreshSelectionUi() {
-        if (messages.isEmpty()) {
+        if (rows.isEmpty()) {
             onSelectionCountChanged(selectedIds.size)
             return
         }
-        notifyItemRangeChanged(0, messages.size, PAYLOAD_SELECTION)
+        notifyItemRangeChanged(0, rows.size, PAYLOAD_SELECTION)
         onSelectionCountChanged(selectedIds.size)
     }
 
+    /** 消息在行列表中的位置（分隔条也占位置）；不存在返回 -1。 */
+    private fun rowIndexOf(messageId: Long): Int =
+        rows.indexOfFirst { row -> row is ChatRow.Message && row.message.id == messageId }
+
     private fun notifyMessage(messageId: Long) {
-        val position = messages.indexOfFirst { it.id == messageId }
+        val position = rowIndexOf(messageId)
         if (position >= 0) notifyItemChanged(position, PAYLOAD_ACTIONS)
     }
 
@@ -320,7 +372,7 @@ class ChatMessageAdapter(
         if (!collapsedThinkingIds.add(messageId)) {
             collapsedThinkingIds.remove(messageId)
         }
-        val position = messages.indexOfFirst { it.id == messageId }
+        val position = rowIndexOf(messageId)
         if (position >= 0) notifyItemChanged(position)
     }
 
@@ -367,16 +419,16 @@ class ChatMessageAdapter(
             val quoted = message.repliedToId != null &&
                 message.repliedRole != null &&
                 !message.repliedPreview.isNullOrEmpty()
-            binding.replyQuote.visibility = if (quoted) View.VISIBLE else View.GONE
+            binding.replyQuote.root.visibility = if (quoted) View.VISIBLE else View.GONE
             if (!quoted) return
-            binding.replyRole.setText(
+            binding.replyQuote.replyRole.setText(
                 if (message.repliedRole == MessageRole.USER) {
                     R.string.role_user
                 } else {
                     R.string.role_assistant
                 },
             )
-            binding.replyPreview.text = message.repliedPreview
+            binding.replyQuote.replyPreview.text = message.repliedPreview
         }
     }
 
@@ -491,16 +543,16 @@ class ChatMessageAdapter(
             val quoted = message.repliedToId != null &&
                 message.repliedRole != null &&
                 !message.repliedPreview.isNullOrEmpty()
-            binding.replyQuote.visibility = if (quoted) View.VISIBLE else View.GONE
+            binding.replyQuote.root.visibility = if (quoted) View.VISIBLE else View.GONE
             if (!quoted) return
-            binding.replyRole.setText(
+            binding.replyQuote.replyRole.setText(
                 if (message.repliedRole == MessageRole.USER) {
                     R.string.role_user
                 } else {
                     R.string.role_assistant
                 },
             )
-            binding.replyPreview.text = message.repliedPreview
+            binding.replyQuote.replyPreview.text = message.repliedPreview
         }
     }
 
@@ -558,6 +610,14 @@ class ChatMessageAdapter(
         }
     }
 
+    private class TimeDividerViewHolder(
+        private val binding: ItemTimeDividerBinding,
+    ) : RecyclerView.ViewHolder(binding.root) {
+        fun bind(label: String) {
+            binding.dividerText.text = label
+        }
+    }
+
     companion object {
         /** 复制成功后打勾图标的停留时长。 */
         private const val COPY_FEEDBACK_MILLIS = 1500L
@@ -572,5 +632,8 @@ class ChatMessageAdapter(
         private const val VIEW_TYPE_ASSISTANT = 2
         private const val VIEW_TYPE_THINKING = 3
         private const val VIEW_TYPE_SUMMARY = 4
+
+        /** 按天分隔的时间条。 */
+        private const val VIEW_TYPE_DIVIDER = 5
     }
 }

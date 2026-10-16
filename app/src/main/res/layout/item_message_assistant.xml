@@ -41,6 +41,7 @@
         android:orientation="vertical">
 
         <include
+            android:id="@+id/replyQuote"
             layout="@layout/view_reply_quote"
             android:layout_width="match_parent"
             android:layout_marginBottom="6dp"
