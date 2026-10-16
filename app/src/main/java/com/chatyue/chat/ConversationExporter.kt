@@ -22,7 +22,7 @@ object ConversationExporter {
 
     /** 生成 Markdown 导出稿。 */
     fun toMarkdown(conversation: Conversation, messages: List<ChatMessage>): String {
-        val exported = messages.filter { it.role != MessageRole.THINKING_ACTIVE }
+        val exported = messages.filter { it.isExportable() }
         val body = exported.joinToString(separator = "\n\n") { message ->
             val speaker = speakerOf(message.role)
             val quoted = quoteLine(message)
@@ -54,7 +54,7 @@ object ConversationExporter {
 
     /** 生成纯文本导出稿（去掉 Markdown 记号，适合粘贴到纯文本环境）。 */
     fun toPlainText(conversation: Conversation, messages: List<ChatMessage>): String {
-        val exported = messages.filter { it.role != MessageRole.THINKING_ACTIVE }
+        val exported = messages.filter { it.isExportable() }
         val body = exported.joinToString(separator = "\n\n") { message ->
             val speaker = speakerOf(message.role)
             val time = timeFormat.format(Date(message.createdAt))
@@ -107,6 +107,13 @@ object ConversationExporter {
         MessageRole.SYSTEM -> SPEAKER_SYSTEM
         MessageRole.THINKING_ACTIVE, MessageRole.THINKING_FINISHED -> SPEAKER_SYSTEM
     }
+
+    /**
+     * 是否进入导出稿：流式思考过程（进行中 / 已完成）属于中间态，一律跳过；
+     * 用户消息、助手回答与上下文压缩摘要才导出。
+     */
+    private fun ChatMessage.isExportable(): Boolean =
+        role != MessageRole.THINKING_ACTIVE && role != MessageRole.THINKING_FINISHED
 
     private const val FILE_NAME_MAX_TITLE_LENGTH = 32
     private const val DEFAULT_TITLE = "会话导出"

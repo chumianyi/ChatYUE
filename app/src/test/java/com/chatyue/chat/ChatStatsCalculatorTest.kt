@@ -44,8 +44,8 @@ class ChatStatsCalculatorTest {
         assertEquals(3, stats.totalMessageCount)
         assertEquals(2, stats.userMessageCount)
         assertEquals(1, stats.assistantMessageCount)
-        // 12 个正文字符 + 12 个 + 2 个；思考过程不计入？不，totalCharacterCount 计全部消息。
-        assertEquals(12 + 10 + 2 + 15, stats.totalCharacterCount)
+        // 正文字符数按全部消息（含思考过程）累计：5 + 10 + 4 + 2。
+        assertEquals(5 + 10 + 4 + 2, stats.totalCharacterCount)
         // 用户消息 5 + 2 = 7 字，平均 3。
         assertEquals(3, stats.averageUserCharacters)
         assertEquals(5, stats.longestUserCharacters)
@@ -84,8 +84,9 @@ class ChatStatsCalculatorTest {
         val counts = ChatStatsCalculator.dailyCounts(emptyList(), now, utc)
 
         assertEquals(7, counts.size)
-        assertEquals(timestamp(2026, Calendar.JULY, 17), counts.first().dayStart)
-        assertEquals(timestamp(2026, Calendar.JULY, 23), counts.last().dayStart)
+        // dayStart 是当天零点，断言也要用零点时间戳。
+        assertEquals(timestamp(2026, Calendar.JULY, 17, 0), counts.first().dayStart)
+        assertEquals(timestamp(2026, Calendar.JULY, 23, 0), counts.last().dayStart)
         counts.forEach { assertEquals(0, it.totalCount) }
     }
 
