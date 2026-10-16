@@ -70,6 +70,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** 打开快捷指令库，返回用户选中的指令正文并填入输入框。 */
+    private val promptLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+        val content = result.data
+            ?.getStringExtra(PromptLibraryActivity.EXTRA_PROMPT_CONTENT)
+            .orEmpty()
+        if (content.isBlank()) return@registerForActivityResult
+        val title = result.data
+            ?.getStringExtra(PromptLibraryActivity.EXTRA_PROMPT_TITLE)
+            .orEmpty()
+        insertPromptContent(content)
+        showKeyboard(binding.messageInput)
+        CompatToast.show(this, getString(R.string.prompt_inserted, title))
+    }
+
     /** onCreate 可能因「未同意协议」提前返回，用它避免 onDestroy 访问未初始化的字段。 */
     private var initialized = false
 
@@ -319,6 +336,9 @@ class MainActivity : AppCompatActivity() {
         }
         binding.addButton.setOnClickListener {
             showAttachmentMenu()
+        }
+        binding.promptButton.setOnClickListener {
+            promptLauncher.launch(Intent(this, PromptLibraryActivity::class.java))
         }
         binding.moreButton.setOnClickListener {
             showMoreMenu()
@@ -586,6 +606,22 @@ class MainActivity : AppCompatActivity() {
         val draft = draftStore.load(currentConversationId)
         binding.messageInput.setText(draft)
         binding.messageInput.setSelection(draft.length)
+        updateSendButton()
+    }
+
+    // ---------------- 快捷指令 ----------------
+
+    /**
+     * 把从指令库选中的正文接进输入框：已有内容时用换行衔接，
+     * 光标移到末尾并让发送按钮重新评估可用性。
+     */
+    private fun insertPromptContent(content: String) {
+        val edit = binding.messageInput
+        val existing = edit.text?.toString().orEmpty()
+        val needsSeparator = existing.isNotBlank() && !existing.endsWith("\n")
+        val merged = if (needsSeparator) "$existing\n$content" else existing + content
+        edit.setText(merged)
+        edit.setSelection(merged.length)
         updateSendButton()
     }
 
@@ -1098,6 +1134,7 @@ class MainActivity : AppCompatActivity() {
             menu.add(0, MENU_SEARCH_MESSAGES, 5, R.string.menu_search_messages)
             menu.add(0, MENU_STATS, 6, R.string.menu_stats)
             menu.add(0, MENU_EXPORT_CONVERSATION, 7, R.string.menu_export_conversation)
+            menu.add(0, MENU_PROMPT_LIBRARY, 8, R.string.menu_prompt_library)
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     MENU_CHANGELOG -> {
@@ -1139,6 +1176,13 @@ class MainActivity : AppCompatActivity() {
 
                     MENU_EXPORT_CONVERSATION -> {
                         exportCurrentConversation()
+                        true
+                    }
+
+                    MENU_PROMPT_LIBRARY -> {
+                        promptLauncher.launch(
+                            Intent(this@MainActivity, PromptLibraryActivity::class.java),
+                        )
                         true
                     }
 
@@ -1723,6 +1767,7 @@ class MainActivity : AppCompatActivity() {
         private const val MENU_SEARCH_MESSAGES = 6
         private const val MENU_STATS = 8
         private const val MENU_EXPORT_CONVERSATION = 7
+        private const val MENU_PROMPT_LIBRARY = 9
         private const val STREAM_THINKING_ID = -1L
         private const val STREAM_ASSISTANT_ID = -2L
 

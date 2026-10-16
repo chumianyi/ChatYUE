@@ -96,6 +96,12 @@
             android:theme="@style/Theme.ChatYUE.Tool" />
 
         <activity
+            android:name=".PromptLibraryActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ChatYUE.Tool"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".license.LicenseActivity"
             android:exported="false"
             android:theme="@style/Theme.ChatYUE.Tool" />

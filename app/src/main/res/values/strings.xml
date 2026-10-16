@@ -339,4 +339,26 @@
     <string name="data_import_confirm_message">导入会覆盖当前的全部对话与配置，是否继续？</string>
     <string name="data_import_confirm_action">继续导入</string>
     <string name="data_note">导出内容包含全部对话记录、个性化配置、自定义背景、模型偏好与使用记录。</string>
+
+    <!-- 快捷指令库（2.0） -->
+    <string name="menu_prompt_library">快捷指令</string>
+    <string name="prompt_library_title">快捷指令</string>
+    <string name="prompt_library_hint">点击指令即可填入输入框，在正文末尾接着写要处理的内容；长按可编辑或删除。</string>
+    <string name="prompt_library_empty">还没有指令，点右上角新增一条吧</string>
+    <string name="prompt_count_label">共 %1$d 条指令</string>
+    <string name="prompt_add">新增指令</string>
+    <string name="prompt_edit">编辑</string>
+    <string name="prompt_delete">删除</string>
+    <string name="prompt_usage_count">已用 %1$d 次</string>
+    <string name="prompt_edit_title_new">新增指令</string>
+    <string name="prompt_edit_title_edit">编辑指令</string>
+    <string name="prompt_field_title">指令标题</string>
+    <string name="prompt_field_content">指令正文</string>
+    <string name="prompt_empty_title">标题不能为空</string>
+    <string name="prompt_empty_content">指令正文不能为空</string>
+    <string name="prompt_saved">已保存</string>
+    <string name="prompt_deleted">已删除</string>
+    <string name="prompt_delete_confirm_title">删除指令</string>
+    <string name="prompt_delete_confirm">确定删除「%1$s」吗？删除后不可恢复。</string>
+    <string name="prompt_inserted">已插入指令：%1$s</string>
 </resources>
