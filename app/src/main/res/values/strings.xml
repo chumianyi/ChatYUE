@@ -11,6 +11,9 @@
     <string name="send_message">发送消息</string>
     <string name="stop_generation">停止生成</string>
     <string name="add_attachment">添加附件</string>
+    <string name="voice_input">语音输入</string>
+    <string name="voice_input_prompt">请说话，我来打字</string>
+    <string name="voice_input_unavailable">当前设备没有可用的语音识别</string>
     <string name="search_conversations">搜索对话内容…</string>
     <string name="account_name">ChatYUE</string>
     <string name="more_options">更多选项</string>

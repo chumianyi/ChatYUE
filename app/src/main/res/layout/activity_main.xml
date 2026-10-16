@@ -418,6 +418,16 @@
                         android:src="@drawable/ic_add" />
 
                     <androidx.appcompat.widget.AppCompatImageButton
+                        android:id="@+id/voiceButton"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_marginStart="2dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/voice_input"
+                        android:padding="6dp"
+                        android:src="@drawable/ic_mic" />
+
+                    <androidx.appcompat.widget.AppCompatImageButton
                         android:id="@+id/promptButton"
                         android:layout_width="36dp"
                         android:layout_height="36dp"

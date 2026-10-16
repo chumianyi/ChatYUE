@@ -9,12 +9,14 @@ import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.speech.RecognizerIntent
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.PopupMenu
 import android.widget.Toast
 import java.io.File
+import java.util.Locale
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
@@ -90,6 +92,23 @@ class MainActivity : AppCompatActivity() {
         insertPromptContent(content)
         showKeyboard(binding.messageInput)
         CompatToast.show(this, getString(R.string.prompt_inserted, title))
+    }
+
+    /**
+     * 启动系统语音识别，把识别出的文字追加到输入框。
+     *
+     * 走系统的 `ACTION_RECOGNIZE_SPEECH`，不需要录音权限；
+     * 追加而非覆盖，避免冲掉输入框里已经写好的内容。
+     */
+    private val speechLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+        val spoken = result.data
+            ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+            ?.firstOrNull()
+            .orEmpty()
+        if (spoken.isNotBlank()) insertPromptContent(spoken)
     }
 
     /** onCreate 可能因「未同意协议」提前返回，用它避免 onDestroy 访问未初始化的字段。 */
@@ -394,6 +413,9 @@ class MainActivity : AppCompatActivity() {
         }
         binding.promptButton.setOnClickListener {
             promptLauncher.launch(Intent(this, PromptLibraryActivity::class.java))
+        }
+        binding.voiceButton.setOnClickListener {
+            startVoiceInput()
         }
         binding.moreButton.setOnClickListener {
             showMoreMenu()
@@ -730,6 +752,32 @@ class MainActivity : AppCompatActivity() {
         edit.setText(merged)
         edit.setSelection(merged.length)
         updateSendButton()
+    }
+
+    /**
+     * 调起系统语音识别面板（自由格式、跟随系统语言）。
+     *
+     * 部分机型没有可用的识别器：启动前先探测，冷启动也兜住
+     * `ActivityNotFoundException`，两种情况都只提示不崩溃。
+     */
+    private fun startVoiceInput() {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
+            )
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag())
+            putExtra(RecognizerIntent.EXTRA_PROMPT, getString(R.string.voice_input_prompt))
+        }
+        if (intent.resolveActivity(packageManager) == null) {
+            CompatToast.show(this, R.string.voice_input_unavailable)
+            return
+        }
+        try {
+            speechLauncher.launch(intent)
+        } catch (e: ActivityNotFoundException) {
+            CompatToast.show(this, R.string.voice_input_unavailable)
+        }
     }
 
     private fun sendMessage() {
@@ -1684,6 +1732,8 @@ class MainActivity : AppCompatActivity() {
         binding.messageInput.isEnabled = enabled
         binding.addButton.isEnabled = enabled
         binding.thinkingModeLabel.isEnabled = enabled
+        // 语音识别会往输入框里写文字，跟随输入框的可用态。
+        binding.voiceButton.isEnabled = enabled
         updateSendButton()
     }
 
