@@ -385,6 +385,8 @@
     <string name="prompt_library_title">快捷指令</string>
     <string name="prompt_library_hint">点击指令即可填入输入框，在正文末尾接着写要处理的内容；长按可编辑或删除。</string>
     <string name="prompt_library_empty">还没有指令，点右上角新增一条吧</string>
+    <string name="prompt_search_hint">搜索指令标题或内容</string>
+    <string name="prompt_search_no_match">没有匹配的指令，换个关键词试试</string>
     <string name="prompt_count_label">共 %1$d 条指令</string>
     <string name="prompt_add">新增指令</string>
     <string name="prompt_edit">编辑</string>

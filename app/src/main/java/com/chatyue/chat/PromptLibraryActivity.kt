@@ -10,6 +10,7 @@ import android.widget.PopupMenu
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.core.widget.doAfterTextChanged
 import com.chatyue.chat.databinding.ActivityPromptLibraryBinding
 import java.util.concurrent.Executors
 
@@ -23,6 +24,9 @@ class PromptLibraryActivity : AppCompatActivity() {
     private lateinit var binding: ActivityPromptLibraryBinding
     private val repository by lazy { LocalPromptRepository(this) }
     private lateinit var adapter: PromptAdapter
+
+    /** 全量指令缓存：搜索只做本地过滤，不重复读库。 */
+    private var allPrompts: List<Prompt> = emptyList()
 
     private val ioExecutor = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "prompt-io").apply { isDaemon = true }
@@ -43,6 +47,10 @@ class PromptLibraryActivity : AppCompatActivity() {
 
         binding.addPromptButton.setOnClickListener { showEditDialog(null) }
 
+        binding.promptSearchInput.doAfterTextChanged { editable ->
+            applyFilter(editable?.toString().orEmpty())
+        }
+
         loadPrompts(seedPresets = true)
     }
 
@@ -61,9 +69,23 @@ class PromptLibraryActivity : AppCompatActivity() {
     }
 
     private fun renderPrompts(prompts: List<Prompt>) {
-        adapter.submit(prompts)
-        binding.emptyText.visibility = if (prompts.isEmpty()) View.VISIBLE else View.GONE
-        binding.countLabel.text = getString(R.string.prompt_count_label, prompts.size)
+        allPrompts = prompts
+        applyFilter(binding.promptSearchInput.text?.toString().orEmpty())
+    }
+
+    /** 本地过滤全量指令；区分「没有指令」与「没有匹配」两种空态。 */
+    private fun applyFilter(query: String) {
+        val filtered = PromptFilter.filter(allPrompts, query)
+        adapter.submit(filtered)
+        binding.emptyText.visibility = if (filtered.isEmpty()) View.VISIBLE else View.GONE
+        binding.emptyText.setText(
+            if (allPrompts.isEmpty()) {
+                R.string.prompt_library_empty
+            } else {
+                R.string.prompt_search_no_match
+            },
+        )
+        binding.countLabel.text = getString(R.string.prompt_count_label, filtered.size)
     }
 
     /** 点击指令：记录一次使用，把标题与正文回传给主页。 */
