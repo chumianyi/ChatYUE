@@ -1,4 +1,4 @@
-// DeepSeekOld - GLM proxy
+// DeepSeekOld - Multi-model GLM proxy, per-IP concurrency=1
 const express = require('express');
 const https = require('https');
 const app = express();
@@ -6,13 +6,16 @@ const PORT = 3456;
 const HOST = '127.0.0.1';
 
 const CLIENT_KEY = 'sk-123456789012345678901234567890';
-const UPSTREAM_KEY = 'd0a99ebaa97e4bac9e99e236211b15f5.m8eJh0XSXMVu2I8P';
 const UPSTREAM_URL = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
-const FORCED_MODEL = 'GLM-4.1V-Thinking-Flash';
+const UPSTREAM_KEY = 'd0a99ebaa97e4bac9e99e236211b15f5.m8eJh0XSXMVu2I8P';
 
-// Concurrency limit: max 5 concurrent requests
-let concurrent = 0;
-const MAX_CONCURRENT = 20;
+const MODELS = {
+  'GLM-4.1V-Thinking-Flash': { upstream: 'GLM-4.1V-Thinking-Flash', created: 1700000000 },
+  'glm-4.7-flash':           { upstream: 'glm-4.7-flash',           created: 1700000000 },
+};
+
+// Per-IP concurrency: max 1 request per IP
+const ipConcurrency = new Map();
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.raw({ type: '*/*', limit: '50mb' }));
@@ -24,19 +27,38 @@ function checkAuth(req, res, next) {
   next();
 }
 
-function concurrencyLimit(req, res, next) {
-  if (concurrent >= MAX_CONCURRENT) {
+function perIpLimit(req, res, next) {
+  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  const n = ipConcurrency.get(ip) || 0;
+  if (n >= 1) {
     return res.status(429).json({ error: { message: '服务器繁忙，请稍后再试', type: 'rate_limit' } });
   }
-  concurrent++;
-  res.on('close', () => { concurrent--; });
+  ipConcurrency.set(ip, n + 1);
+  res.on('close', () => {
+    const cur = ipConcurrency.get(ip) || 1;
+    ipConcurrency.set(ip, Math.max(0, cur - 1));
+  });
   next();
 }
 
-app.all('/v1/chat/completions', checkAuth, concurrencyLimit, (req, res) => {
+// GET /v1/models
+app.get('/v1/models', (req, res) => {
+  const data = Object.keys(MODELS).map(id => ({
+    id, object: 'model', created: MODELS[id].created, owned_by: 'deepseekold'
+  }));
+  res.json({ object: 'list', data });
+});
+
+// POST /v1/chat/completions
+app.all('/v1/chat/completions', checkAuth, perIpLimit, (req, res) => {
   let body = req.body;
   if (Buffer.isBuffer(body)) { try { body = JSON.parse(body.toString()); } catch(e) { body = {}; } }
-  body.model = FORCED_MODEL;
+
+  const reqModel = body.model || '';
+  if (!MODELS[reqModel]) {
+    return res.status(404).json({ error: { message: 'model not found: ' + reqModel, type: 'invalid_request_error' } });
+  }
+  body.model = MODELS[reqModel].upstream;
 
   const isStream = body.stream === true;
   const bodyStr = JSON.stringify(body);
@@ -61,5 +83,5 @@ app.all('/v1/chat/completions', checkAuth, concurrencyLimit, (req, res) => {
   pr.write(bodyStr); pr.end();
 });
 
-app.get('/', (req, res) => { res.type('text/plain').send('DeepSeekOld API Proxy - GLM-4.1V-Thinking-Flash'); });
-app.listen(PORT, HOST, () => { console.log('DeepSeekOld on ' + HOST + ':' + PORT + ' model=' + FORCED_MODEL + ' maxConcurrent=' + MAX_CONCURRENT); });
+app.get('/', (req, res) => { res.type('text/plain').send('DeepSeekOld API Proxy'); });
+app.listen(PORT, HOST, () => { console.log('DeepSeekOld on ' + HOST + ':' + PORT + ' models=' + Object.keys(MODELS).join(',') + ' per-IP concurrency=1'); });
