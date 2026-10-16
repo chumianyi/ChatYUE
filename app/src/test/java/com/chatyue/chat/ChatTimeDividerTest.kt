@@ -62,7 +62,7 @@ class ChatTimeDividerTest {
 
     @Test
     fun yesterday_getsYesterdayDivider() {
-        val now = timestamp(2026, Calendar.OCTOBER, 16, 0, 30)
+        val now = timestamp(2026, Calendar.OCTOBER, 16, 0)
         // now 取凌晨，确保「昨天」按自然日回退而不是 24 小时。
         val rows = ChatTimeDivider.buildRows(
             listOf(message(1, "昨晚", timestamp(2026, Calendar.OCTOBER, 15, 23))),
