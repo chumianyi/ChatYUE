@@ -35,7 +35,8 @@ class DeepSeekChatBackendTest {
             FixedEndpoint.CHAT_COMPLETIONS_URL,
         )
         assertEquals("sk-123456789012345678901234567890", FixedEndpoint.API_KEY)
-        assertEquals("deepseek-ai/DeepSeek-R1", FixedEndpoint.MODEL)
+        // 2.0：模型改由 ModelCatalog 按模式一对一绑定，FixedEndpoint 不再持有模型。
+        assertEquals(ModelCatalog.THINKING_MODEL, ModelCatalog.modelFor(ChatMode.THINKING))
     }
 
     @Test
@@ -108,7 +109,7 @@ class DeepSeekChatBackendTest {
             request?.getHeader("Authorization"),
         )
         val body = JSONObject(request?.body?.readUtf8().orEmpty())
-        assertEquals("deepseek-ai/DeepSeek-R1", body.getString("model"))
+        assertEquals(ModelCatalog.THINKING_MODEL, body.getString("model"))
         assertTrue(body.getBoolean("stream"))
         assertEquals(4, body.getJSONArray("messages").length())
         assertEquals(
