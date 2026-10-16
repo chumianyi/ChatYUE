@@ -34,6 +34,9 @@ class LocalChatRepository(context: Context) :
                 $COLUMN_ROLE TEXT NOT NULL,
                 $COLUMN_CONTENT TEXT NOT NULL,
                 $COLUMN_CREATED_AT INTEGER NOT NULL,
+                $COLUMN_REPLIED_TO_ID INTEGER,
+                $COLUMN_REPLIED_ROLE TEXT,
+                $COLUMN_REPLIED_PREVIEW TEXT,
                 FOREIGN KEY($COLUMN_CONVERSATION_ID)
                     REFERENCES $TABLE_CONVERSATIONS($COLUMN_ID)
                     ON DELETE CASCADE
@@ -64,6 +67,21 @@ class LocalChatRepository(context: Context) :
             db.execSQL(
                 "ALTER TABLE $TABLE_CONVERSATIONS ADD COLUMN " +
                     "$COLUMN_PINNED INTEGER NOT NULL DEFAULT 0",
+            )
+        }
+        if (oldVersion < 4) {
+            // 3 -> 4：消息表新增「引用回复」三列，老消息默认无引用。
+            db.execSQL(
+                "ALTER TABLE $TABLE_MESSAGES ADD COLUMN " +
+                    "$COLUMN_REPLIED_TO_ID INTEGER",
+            )
+            db.execSQL(
+                "ALTER TABLE $TABLE_MESSAGES ADD COLUMN " +
+                    "$COLUMN_REPLIED_ROLE TEXT",
+            )
+            db.execSQL(
+                "ALTER TABLE $TABLE_MESSAGES ADD COLUMN " +
+                    "$COLUMN_REPLIED_PREVIEW TEXT",
             )
         }
     }
@@ -195,7 +213,8 @@ class LocalChatRepository(context: Context) :
         // 只汇总「全局对话」会话的消息；单独对话的数据保持隔离。
         val sql = """
             SELECT m.$COLUMN_ID, m.$COLUMN_CONVERSATION_ID, m.$COLUMN_ROLE,
-                   m.$COLUMN_CONTENT, m.$COLUMN_CREATED_AT
+                   m.$COLUMN_CONTENT, m.$COLUMN_CREATED_AT,
+                   m.$COLUMN_REPLIED_TO_ID, m.$COLUMN_REPLIED_ROLE, m.$COLUMN_REPLIED_PREVIEW
             FROM $TABLE_MESSAGES m
             INNER JOIN $TABLE_CONVERSATIONS c
                 ON m.$COLUMN_CONVERSATION_ID = c.$COLUMN_ID
@@ -213,6 +232,9 @@ class LocalChatRepository(context: Context) :
                 val roleIndex = cursor.getColumnIndexOrThrow(COLUMN_ROLE)
                 val contentIndex = cursor.getColumnIndexOrThrow(COLUMN_CONTENT)
                 val createdAtIndex = cursor.getColumnIndexOrThrow(COLUMN_CREATED_AT)
+                val repliedToIdIndex = cursor.getColumnIndexOrThrow(COLUMN_REPLIED_TO_ID)
+                val repliedRoleIndex = cursor.getColumnIndexOrThrow(COLUMN_REPLIED_ROLE)
+                val repliedPreviewIndex = cursor.getColumnIndexOrThrow(COLUMN_REPLIED_PREVIEW)
                 while (cursor.moveToNext()) {
                     add(
                         ChatMessage(
@@ -221,6 +243,11 @@ class LocalChatRepository(context: Context) :
                             role = MessageRole.valueOf(cursor.getString(roleIndex)),
                             content = cursor.getString(contentIndex),
                             createdAt = cursor.getLong(createdAtIndex),
+                            repliedToId = cursor.getLong(repliedToIdIndex)
+                                .takeIf { !cursor.isNull(repliedToIdIndex) },
+                            repliedRole = cursor.getString(repliedRoleIndex)
+                                ?.let { name -> MessageRole.entries.firstOrNull { it.name == name } },
+                            repliedPreview = cursor.getString(repliedPreviewIndex),
                         ),
                     )
                 }
@@ -237,6 +264,9 @@ class LocalChatRepository(context: Context) :
                 COLUMN_ROLE,
                 COLUMN_CONTENT,
                 COLUMN_CREATED_AT,
+                COLUMN_REPLIED_TO_ID,
+                COLUMN_REPLIED_ROLE,
+                COLUMN_REPLIED_PREVIEW,
             ),
             "$COLUMN_CONVERSATION_ID = ?",
             arrayOf(conversationId.toString()),
@@ -251,6 +281,9 @@ class LocalChatRepository(context: Context) :
                 val roleIndex = cursor.getColumnIndexOrThrow(COLUMN_ROLE)
                 val contentIndex = cursor.getColumnIndexOrThrow(COLUMN_CONTENT)
                 val createdAtIndex = cursor.getColumnIndexOrThrow(COLUMN_CREATED_AT)
+                val repliedToIdIndex = cursor.getColumnIndexOrThrow(COLUMN_REPLIED_TO_ID)
+                val repliedRoleIndex = cursor.getColumnIndexOrThrow(COLUMN_REPLIED_ROLE)
+                val repliedPreviewIndex = cursor.getColumnIndexOrThrow(COLUMN_REPLIED_PREVIEW)
                 while (cursor.moveToNext()) {
                     add(
                         ChatMessage(
@@ -259,6 +292,11 @@ class LocalChatRepository(context: Context) :
                             role = MessageRole.valueOf(cursor.getString(roleIndex)),
                             content = cursor.getString(contentIndex),
                             createdAt = cursor.getLong(createdAtIndex),
+                            repliedToId = cursor.getLong(repliedToIdIndex)
+                                .takeIf { !cursor.isNull(repliedToIdIndex) },
+                            repliedRole = cursor.getString(repliedRoleIndex)
+                                ?.let { name -> MessageRole.entries.firstOrNull { it.name == name } },
+                            repliedPreview = cursor.getString(repliedPreviewIndex),
                         ),
                     )
                 }
@@ -317,6 +355,9 @@ class LocalChatRepository(context: Context) :
         conversationId: Long,
         role: MessageRole,
         content: String,
+        repliedToId: Long?,
+        repliedRole: MessageRole?,
+        repliedPreview: String?,
     ): Long {
         val now = System.currentTimeMillis()
         val values = ContentValues().apply {
@@ -324,6 +365,10 @@ class LocalChatRepository(context: Context) :
             put(COLUMN_ROLE, role.name)
             put(COLUMN_CONTENT, content)
             put(COLUMN_CREATED_AT, now)
+            // 引用字段可空：不引用时不写列，保持 NULL。
+            put(COLUMN_REPLIED_TO_ID, repliedToId)
+            put(COLUMN_REPLIED_ROLE, repliedRole?.name)
+            put(COLUMN_REPLIED_PREVIEW, repliedPreview)
         }
         val db = writableDatabase
         val messageId = db.insertOrThrow(TABLE_MESSAGES, null, values)
@@ -517,7 +562,7 @@ class LocalChatRepository(context: Context) :
 
     companion object {
         private const val DATABASE_NAME = "chatyue.db"
-        private const val DATABASE_VERSION = 3
+        private const val DATABASE_VERSION = 4
         private const val SUMMARY_CREATED_AT = 1L
 
         private const val TABLE_CONVERSATIONS = "conversations"
@@ -531,5 +576,8 @@ class LocalChatRepository(context: Context) :
         private const val COLUMN_ROLE = "role"
         private const val COLUMN_CONTENT = "content"
         private const val COLUMN_CREATED_AT = "created_at"
+        private const val COLUMN_REPLIED_TO_ID = "replied_to_id"
+        private const val COLUMN_REPLIED_ROLE = "replied_role"
+        private const val COLUMN_REPLIED_PREVIEW = "replied_preview"
     }
 }

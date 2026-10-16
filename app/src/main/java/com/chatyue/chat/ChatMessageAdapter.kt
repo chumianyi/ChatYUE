@@ -215,10 +215,28 @@ class ChatMessageAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind(message: ChatMessage) {
             binding.messageText.text = message.content
+            bindReplyQuote(message)
             binding.root.setOnLongClickListener {
                 onLongPress(message, binding.messageText)
                 true
             }
+        }
+
+        /** 有引用才显示引用块，无引用时彻底隐藏，不占位。 */
+        private fun bindReplyQuote(message: ChatMessage) {
+            val quoted = message.repliedToId != null &&
+                message.repliedRole != null &&
+                !message.repliedPreview.isNullOrEmpty()
+            binding.replyQuote.visibility = if (quoted) View.VISIBLE else View.GONE
+            if (!quoted) return
+            binding.replyRole.setText(
+                if (message.repliedRole == MessageRole.USER) {
+                    R.string.role_user
+                } else {
+                    R.string.role_assistant
+                },
+            )
+            binding.replyPreview.text = message.repliedPreview
         }
     }
 
@@ -267,12 +285,30 @@ class ChatMessageAdapter(
             current = message
             binding.assistantLogo.visibility = if (showLogo) View.VISIBLE else View.GONE
             markwon.setMarkdown(binding.messageText, message.content)
+            bindReplyQuote(message)
 
             // 复用视图时清掉上一次的复制反馈。
             binding.copyButton.removeCallbacks(resetCopyIcon)
             binding.copyButton.setImageResource(R.drawable.ic_action_copy)
 
             bindActions(showActions, liked, disliked)
+        }
+
+        /** 有引用才显示引用块，无引用时彻底隐藏，不占位。 */
+        private fun bindReplyQuote(message: ChatMessage) {
+            val quoted = message.repliedToId != null &&
+                message.repliedRole != null &&
+                !message.repliedPreview.isNullOrEmpty()
+            binding.replyQuote.visibility = if (quoted) View.VISIBLE else View.GONE
+            if (!quoted) return
+            binding.replyRole.setText(
+                if (message.repliedRole == MessageRole.USER) {
+                    R.string.role_user
+                } else {
+                    R.string.role_assistant
+                },
+            )
+            binding.replyPreview.text = message.repliedPreview
         }
 
         /** 只更新操作栏（点赞 / 点踩状态变化时调用，不重新渲染正文）。 */

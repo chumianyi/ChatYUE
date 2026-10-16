@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  消息气泡内的引用块：概述被引用消息的角色与内容摘要。
+  默认隐藏，仅当消息带引用（repliedToId 非空）时显示。
+  被 item_message_user.xml 与 item_message_assistant.xml 共同引用。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/replyQuote"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_reply_quote"
+    android:gravity="center_vertical"
+    android:minHeight="30dp"
+    android:orientation="horizontal"
+    android:paddingStart="8dp"
+    android:paddingTop="6dp"
+    android:paddingEnd="10dp"
+    android:paddingBottom="6dp"
+    android:visibility="gone">
+
+    <View
+        android:layout_width="2dp"
+        android:layout_height="22dp"
+        android:background="@color/ds_blue" />
+
+    <ImageView
+        android:layout_width="13dp"
+        android:layout_height="13dp"
+        android:layout_marginStart="6dp"
+        android:contentDescription="@null"
+        android:src="@drawable/ic_reply" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/replyRole"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/ds_text_tertiary"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/replyPreview"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textColor="@color/ds_text_secondary"
+            android:textSize="12sp" />
+    </LinearLayout>
+</LinearLayout>

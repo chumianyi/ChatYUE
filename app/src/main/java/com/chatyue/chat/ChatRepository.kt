@@ -31,10 +31,20 @@ interface ChatRepository {
      */
     fun getGlobalMemoryMessages(excludeConversationId: Long): List<ChatMessage>
 
+    /**
+     * 追加一条消息。
+     *
+     * @param repliedToId 这条消息引用的消息 id；null 表示不引用。
+     * @param repliedRole 被引用消息的角色，与 [repliedToId] 同时提供。
+     * @param repliedPreview 被引用内容的摘要预览，与 [repliedToId] 同时提供。
+     */
     fun addMessage(
         conversationId: Long,
         role: MessageRole,
         content: String,
+        repliedToId: Long? = null,
+        repliedRole: MessageRole? = null,
+        repliedPreview: String? = null,
     ): Long
 
     fun updateMessageRole(messageId: Long, role: MessageRole)

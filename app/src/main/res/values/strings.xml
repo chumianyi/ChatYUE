@@ -203,6 +203,11 @@
     <string name="message_search_result_count">共 %1$d 条结果</string>
     <string name="role_user">我</string>
     <string name="role_assistant">ChatYUE</string>
+    <!-- 引用回复 -->
+    <string name="action_reply">引用回复</string>
+    <string name="reply_bar_to_user">回复 %1$s</string>
+    <string name="reply_cancel">取消引用</string>
+    <string name="reply_quote_empty">空消息无法引用</string>
     <!-- 启动画面（2.0） -->
     <string name="splash_title">ChatYUE</string>
     <string name="splash_subtitle">给你更好的体验</string>

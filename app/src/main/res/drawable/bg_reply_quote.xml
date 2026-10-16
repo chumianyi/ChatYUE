@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 引用回复块的浅色底：与气泡底色区分，圆角略小于消息气泡。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/ds_surface_soft" />
+    <corners android:radius="8dp" />
+</shape>

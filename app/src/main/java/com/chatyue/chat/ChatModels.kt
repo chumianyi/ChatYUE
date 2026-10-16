@@ -46,6 +46,12 @@ data class ChatMessage(
     val role: MessageRole,
     val content: String,
     val createdAt: Long,
+    /** 被引用消息的 id；null 表示这条消息没有引用任何消息。 */
+    val repliedToId: Long? = null,
+    /** 被引用消息的角色（用户或助手），用于气泡内引用块的小标题。 */
+    val repliedRole: MessageRole? = null,
+    /** 被引用内容的摘要预览，长文本会被截断后存入。 */
+    val repliedPreview: String? = null,
 )
 
 /**

@@ -29,6 +29,13 @@
         android:layout_weight="1"
         android:orientation="vertical">
 
+        <include
+            layout="@layout/view_reply_quote"
+            android:layout_width="match_parent"
+            android:layout_marginBottom="6dp"
+            xmlns:tools="http://schemas.android.com/tools"
+            tools:visibility="visible" />
+
         <com.chatyue.chat.CompatSelectableTextView
             android:id="@+id/messageText"
             android:layout_width="match_parent"

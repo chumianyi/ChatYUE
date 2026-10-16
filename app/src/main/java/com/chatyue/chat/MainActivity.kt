@@ -85,6 +85,9 @@ class MainActivity : AppCompatActivity() {
     /** 新会话的默认记忆模式（2.0：新建会话时由用户选择，默认全局）。 */
     private var pendingMemoryMode: ConversationMemoryMode = ConversationMemoryMode.GLOBAL
 
+    /** 待发送消息引用的目标消息；null 表示不引用。 */
+    private var pendingReplyTarget: ChatMessage? = null
+
     /** 强制升级守护（2.0）。 */
     private var versionGuard: VersionGuard? = null
 
@@ -150,6 +153,11 @@ class MainActivity : AppCompatActivity() {
         outState.putLong(
             STATE_CONVERSATION_ID,
             currentConversationId ?: NO_CONVERSATION_ID,
+        )
+        // 引用目标只存 id，恢复时随会话消息一起从库里找回。
+        outState.putLong(
+            STATE_REPLY_TO_ID,
+            pendingReplyTarget?.id ?: NO_REPLY_TO_ID,
         )
     }
 
@@ -285,6 +293,9 @@ class MainActivity : AppCompatActivity() {
         }
         binding.moreButton.setOnClickListener {
             showMoreMenu()
+        }
+        binding.replyBarClose.setOnClickListener {
+            cancelReply()
         }
         binding.toolTranslate.setOnClickListener {
             openTool(TranslationActivity::class.java)
@@ -533,7 +544,15 @@ class MainActivity : AppCompatActivity() {
             binding.chatTitle.text = ConversationFormatter.titleFrom(userContent)
         }
 
-        repository.addMessage(conversationId, MessageRole.USER, userContent)
+        val replyTarget = pendingReplyTarget
+        repository.addMessage(
+            conversationId = conversationId,
+            role = MessageRole.USER,
+            content = userContent,
+            repliedToId = replyTarget?.id,
+            repliedRole = replyTarget?.role,
+            repliedPreview = replyTarget?.let { ReplyFormatter.preview(it.content) },
+        )
         if (wasNewConversation) {
             repository.updateConversationTitle(
                 conversationId,
@@ -542,6 +561,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.messageInput.text?.clear()
         clearAttachments()
+        clearReply()
         followStreaming = true
         pendingStreamingState = null
         pendingMessageReloadConversationId = null
@@ -620,7 +640,20 @@ class MainActivity : AppCompatActivity() {
             } else {
                 loadMessages(restoredConversation.id)
             }
+            restoreReplyTarget(savedInstanceState)
         }
+    }
+
+    /** 旋转屏幕后恢复「引用回复」目标：只带了 id，回库里按 id 找回消息。 */
+    private fun restoreReplyTarget(savedInstanceState: Bundle?) {
+        val replyToId = savedInstanceState
+            ?.getLong(STATE_REPLY_TO_ID, NO_REPLY_TO_ID)
+            ?.takeIf { it != NO_REPLY_TO_ID }
+            ?: return
+        val conversationId = currentConversationId ?: return
+        pendingReplyTarget = repository.getMessages(conversationId)
+            .firstOrNull { it.id == replyToId }
+        updateReplyBar()
     }
 
     private fun showNewConversation() {
@@ -632,6 +665,7 @@ class MainActivity : AppCompatActivity() {
         binding.chatTitle.setText(R.string.new_chat)
         binding.messageInput.text?.clear()
         clearAttachments()
+        clearReply()
         showMessages(emptyList())
         hideKeyboard()
         refreshConversationList(binding.searchInput.text?.toString().orEmpty())
@@ -720,6 +754,7 @@ class MainActivity : AppCompatActivity() {
         hideKeyboard()
         binding.drawerLayout.closeDrawer(GravityCompat.START)
         refreshConversationList(binding.searchInput.text?.toString().orEmpty())
+        clearReply()
     }
 
     private fun loadMessages(
@@ -1124,16 +1159,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** 长按消息气泡：复制 / 重新生成 / 删除。 */
+    /** 长按消息气泡：复制 / 引用回复 / 重新生成 / 删除。 */
     private fun handleMessageLongPress(message: ChatMessage, anchor: View) {
         PopupMenu(this, anchor).apply {
             menu.add(0, MENU_COPY_ITEM, 0, R.string.action_copy)
-            menu.add(0, MENU_REGENERATE_ITEM, 1, R.string.action_regenerate)
-            menu.add(0, MENU_DELETE_ITEM, 2, R.string.action_delete)
+            menu.add(0, MENU_REPLY_ITEM, 1, R.string.action_reply)
+            menu.add(0, MENU_REGENERATE_ITEM, 2, R.string.action_regenerate)
+            menu.add(0, MENU_DELETE_ITEM, 3, R.string.action_delete)
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     MENU_COPY_ITEM -> {
                         copyMessage(message)
+                        true
+                    }
+
+                    MENU_REPLY_ITEM -> {
+                        startReplyTo(message)
                         true
                     }
 
@@ -1151,6 +1192,55 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }.show()
+    }
+
+    // ---------------- 引用回复 ----------------
+
+    /**
+     * 进入引用回复：把目标消息挂到待发送状态，输入区上方显示引用预览条。
+     *
+     * 再次引用其他消息会直接替换引用目标，不会叠加。
+     */
+    private fun startReplyTo(message: ChatMessage) {
+        if (message.content.isBlank()) {
+            CompatToast.show(this, R.string.reply_quote_empty)
+            return
+        }
+        pendingReplyTarget = message
+        updateReplyBar()
+        // 唤起键盘，让用户直接接着输入回复内容。
+        binding.messageInput.requestFocus()
+        showKeyboard(binding.messageInput)
+    }
+
+    /** 取消引用，隐藏预览条；不影响已输入的正文。 */
+    private fun cancelReply() {
+        if (pendingReplyTarget == null) return
+        pendingReplyTarget = null
+        updateReplyBar()
+    }
+
+    /** 刷新输入区上方的引用预览条。 */
+    private fun updateReplyBar() {
+        val target = pendingReplyTarget
+        if (target == null) {
+            binding.replyBar.visibility = View.GONE
+            return
+        }
+        binding.replyBar.visibility = View.VISIBLE
+        val speaker = if (target.role == MessageRole.USER) {
+            getString(R.string.role_user)
+        } else {
+            getString(R.string.role_assistant)
+        }
+        binding.replyBarTitle.text = getString(R.string.reply_bar_to_user, speaker)
+        binding.replyBarPreview.text = ReplyFormatter.preview(target.content)
+    }
+
+    /** 切换会话 / 新会话时清掉引用，避免把引用带到别的会话里。 */
+    private fun clearReply() {
+        pendingReplyTarget = null
+        if (initialized) updateReplyBar()
     }
 
     /**
@@ -1290,6 +1380,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** 拉起软键盘，用于「引用回复」后直接接着输入。 */
+    private fun showKeyboard(view: View) {
+        getSystemService<InputMethodManager>()?.showSoftInput(view, InputMethodManager.SHOW_IMPLICIT)
+    }
+
     @Suppress("DEPRECATION")
     private fun hasUsableNetwork(): Boolean {
         val connectivityManager = getSystemService<ConnectivityManager>() ?: return false
@@ -1314,6 +1409,8 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val STATE_CONVERSATION_ID = "state_conversation_id"
         private const val NO_CONVERSATION_ID = -1L
+        private const val STATE_REPLY_TO_ID = "state_reply_to_id"
+        private const val NO_REPLY_TO_ID = -1L
         private const val MENU_CHANGELOG = 1
         private const val MENU_CHECK_UPDATE = 2
         private const val MENU_SETTINGS = 5
@@ -1322,6 +1419,7 @@ class MainActivity : AppCompatActivity() {
         private const val MENU_COPY_ITEM = 100
         private const val MENU_REGENERATE_ITEM = 101
         private const val MENU_DELETE_ITEM = 102
+        private const val MENU_REPLY_ITEM = 103
         private const val MENU_CONV_PIN = 200
         private const val MENU_CONV_RENAME = 201
         private const val MENU_CONV_DELETE = 202
