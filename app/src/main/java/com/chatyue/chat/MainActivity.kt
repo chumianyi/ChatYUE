@@ -407,6 +407,9 @@ class MainActivity : AppCompatActivity() {
         binding.selectionCopy.setOnClickListener {
             copySelectedMessages()
         }
+        binding.selectionShare.setOnClickListener {
+            shareSelectedMessages()
+        }
         binding.selectionDelete.setOnClickListener {
             confirmSelectionDelete()
         }
@@ -1573,7 +1576,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** 长按消息气泡：复制 / 引用回复 / 多选 / 重新生成 / 删除。 */
+    /** 长按消息气泡：复制 / 引用回复 / 多选 / 重新生成 / 分享 / 删除。 */
     private fun handleMessageLongPress(message: ChatMessage, anchor: View) {
         // 多选模式下长按不再弹菜单，避免两种交互打架。
         if (messageAdapter.isSelectionMode()) return
@@ -1582,7 +1585,8 @@ class MainActivity : AppCompatActivity() {
             menu.add(0, MENU_REPLY_ITEM, 1, R.string.action_reply)
             menu.add(0, MENU_MULTI_SELECT_ITEM, 2, R.string.action_multi_select)
             menu.add(0, MENU_REGENERATE_ITEM, 3, R.string.action_regenerate)
-            menu.add(0, MENU_DELETE_ITEM, 4, R.string.action_delete)
+            menu.add(0, MENU_SHARE_ITEM, 4, R.string.action_share)
+            menu.add(0, MENU_DELETE_ITEM, 5, R.string.action_delete)
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     MENU_COPY_ITEM -> {
@@ -1602,6 +1606,11 @@ class MainActivity : AppCompatActivity() {
 
                     MENU_REGENERATE_ITEM -> {
                         regenerateFrom(message)
+                        true
+                    }
+
+                    MENU_SHARE_ITEM -> {
+                        shareMessage(message)
                         true
                     }
 
@@ -1673,6 +1682,39 @@ class MainActivity : AppCompatActivity() {
             ClipData.newPlainText(getString(R.string.app_name), text),
         )
         CompatToast.show(this, getString(R.string.selection_copy_done, selected.size))
+    }
+
+    /** 长按单条消息分享：带角色前缀与来源署名的纯文本，交给系统分享面板。 */
+    private fun shareMessage(message: ChatMessage) {
+        if (message.content.isEmpty()) {
+            CompatToast.show(this, R.string.share_empty)
+            return
+        }
+        shareText(MessageShareFormatter.format(message))
+    }
+
+    /** 多选消息分享：按阅读顺序拼接全部选中消息。 */
+    private fun shareSelectedMessages() {
+        val selected = messageAdapter.getSelectedMessages()
+        if (selected.isEmpty()) {
+            CompatToast.show(this, R.string.selection_empty)
+            return
+        }
+        shareText(MessageShareFormatter.formatAll(selected))
+    }
+
+    /** 弹出系统分享面板；找不到可分享应用时不崩溃，仅提示。 */
+    private fun shareText(text: String) {
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, text)
+        }
+        val chooser = Intent.createChooser(send, getString(R.string.action_share))
+        if (chooser.resolveActivity(packageManager) != null) {
+            startActivity(chooser)
+        } else {
+            CompatToast.show(this, R.string.share_no_app)
+        }
     }
 
     private fun confirmSelectionDelete() {
@@ -2032,6 +2074,7 @@ class MainActivity : AppCompatActivity() {
         private const val MENU_DELETE_ITEM = 102
         private const val MENU_REPLY_ITEM = 103
         private const val MENU_MULTI_SELECT_ITEM = 104
+        private const val MENU_SHARE_ITEM = 105
         private const val MENU_CONV_PIN = 200
         private const val MENU_CONV_RENAME = 201
         private const val MENU_CONV_EXPORT = 203

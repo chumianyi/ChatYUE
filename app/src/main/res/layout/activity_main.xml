@@ -137,6 +137,16 @@
                 android:src="@drawable/ic_action_copy" />
 
             <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/selectionShare"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="2dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/action_share"
+                android:padding="9dp"
+                android:src="@drawable/ic_action_share" />
+
+            <androidx.appcompat.widget.AppCompatImageButton
                 android:id="@+id/selectionDelete"
                 android:layout_width="40dp"
                 android:layout_height="40dp"

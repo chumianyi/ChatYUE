@@ -201,6 +201,9 @@
     <string name="action_regenerate">重新生成</string>
     <string name="action_delete">删除</string>
     <string name="action_delete_done">已删除</string>
+    <string name="action_share">分享</string>
+    <string name="share_empty">这条消息没有可分享的内容</string>
+    <string name="share_no_app">没有找到可分享的应用</string>
     <string name="action_regenerate_started">正在重新生成回答</string>
     <string name="jump_to_bottom">回到底部</string>
     <string name="jump_to_bottom_unread">%1$d 条新消息</string>
