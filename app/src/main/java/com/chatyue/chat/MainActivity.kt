@@ -225,7 +225,13 @@ class MainActivity : AppCompatActivity() {
         versionGuard = VersionGuard(this).also { it.start() }
 
         // 朗读引擎跟随主界面生命周期，退出时统一释放。
-        messageSpeaker = MessageSpeaker(this)
+        messageSpeaker = MessageSpeaker(this, AppConfig.speechRate(this).rate)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 从设置页回来时同步朗读语速，让新档位立即生效。
+        messageSpeaker?.updateSpeechRate(AppConfig.speechRate(this).rate)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

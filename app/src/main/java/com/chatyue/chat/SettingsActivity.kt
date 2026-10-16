@@ -43,6 +43,9 @@ class SettingsActivity : AppCompatActivity() {
         binding.modeRow.setOnClickListener { showModeDialog() }
         refreshModeSummary()
 
+        binding.speechRateRow.setOnClickListener { showSpeechRateDialog() }
+        refreshSpeechRateSummary()
+
         binding.dataRow.setOnClickListener {
             startActivity(Intent(this, DataManagerActivity::class.java))
         }
@@ -112,6 +115,28 @@ class SettingsActivity : AppCompatActivity() {
             R.string.settings_mode_summary_format,
             com.chatyue.chat.backend.ModelCatalog.displayName(mode),
         )
+    }
+
+    private fun showSpeechRateDialog() {
+        val rates = AppConfig.SpeechRate.entries.toTypedArray()
+        val labels = rates.map { "${it.label}  ·  ${it.summary}" }.toTypedArray()
+        val current = AppConfig.speechRate(this)
+        val checked = rates.indexOf(current).coerceAtLeast(0)
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(R.string.settings_speech_rate)
+            .setSingleChoiceItems(labels, checked) { dialog, which ->
+                if (rates[which] != current) {
+                    AppConfig.setSpeechRate(this, rates[which])
+                }
+                dialog.dismiss()
+                refreshSpeechRateSummary()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun refreshSpeechRateSummary() {
+        binding.speechRateSummary.text = AppConfig.speechRate(this).label
     }
 
     private fun refreshBackgroundSummary() {

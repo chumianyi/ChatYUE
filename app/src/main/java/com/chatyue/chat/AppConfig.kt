@@ -16,6 +16,7 @@ object AppConfig {
     private const val KEY_UI_SCALE = "ui_scale"
     private const val KEY_SPLASH_ENABLED = "splash_enabled"
     private const val KEY_CHAT_MODE = "chat_mode"
+    private const val KEY_SPEECH_RATE = "speech_rate"
     private const val KEY_OOBE_COMPLETED = "oobe_completed"
 
     /** UI 尺寸档位。 */
@@ -23,6 +24,13 @@ object AppConfig {
         STANDARD("标准", 1.0f, "默认尺寸，适合大多数机型"),
         LARGE("大", 1.12f, "字体与控件整体放大"),
         EXTRA_LARGE("特大", 1.24f, "适合视力不佳或大屏设备"),
+    }
+
+    /** 消息朗读语速档位。 */
+    enum class SpeechRate(val label: String, val rate: Float, val summary: String) {
+        SLOW("慢", 0.75f, "听得更清楚，适合跟读"),
+        NORMAL("正常", 1.0f, "默认语速"),
+        FAST("快", 1.5f, "适合已知内容快速浏览"),
     }
 
     /** 配置变化监听（界面需要实时响应尺寸变化）。 */
@@ -59,6 +67,18 @@ object AppConfig {
 
     fun setSplashEnabled(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean(KEY_SPLASH_ENABLED, enabled).apply()
+    }
+
+    // ---------------- 朗读语速 ----------------
+
+    /** 当前朗读语速，默认正常。 */
+    fun speechRate(context: Context): SpeechRate {
+        val name = prefs(context).getString(KEY_SPEECH_RATE, null)
+        return SpeechRate.entries.firstOrNull { it.name == name } ?: SpeechRate.NORMAL
+    }
+
+    fun setSpeechRate(context: Context, rate: SpeechRate) {
+        prefs(context).edit().putString(KEY_SPEECH_RATE, rate.name).apply()
     }
 
     // ---------------- 运行时模式偏好 ----------------

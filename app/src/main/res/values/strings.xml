@@ -339,6 +339,8 @@
     <string name="settings_mode">默认推理模式</string>
     <string name="settings_mode_summary">新对话使用的默认模式，可随时在对话页切换</string>
     <string name="settings_mode_summary_format">当前：%1$s</string>
+    <string name="settings_speech_rate">朗读语速</string>
+    <string name="settings_speech_rate_summary">点击消息上的喇叭朗读时使用的语速</string>
     <string name="menu_licenses">开源许可证</string>
 
     <!-- 全局背景（2.0） -->
