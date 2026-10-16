@@ -1096,7 +1096,8 @@ class MainActivity : AppCompatActivity() {
             menu.add(0, MENU_ABOUT, 3, R.string.about_menu)
             menu.add(0, MENU_CLEAR_HISTORY, 4, R.string.clear_history)
             menu.add(0, MENU_SEARCH_MESSAGES, 5, R.string.menu_search_messages)
-            menu.add(0, MENU_EXPORT_CONVERSATION, 6, R.string.menu_export_conversation)
+            menu.add(0, MENU_STATS, 6, R.string.menu_stats)
+            menu.add(0, MENU_EXPORT_CONVERSATION, 7, R.string.menu_export_conversation)
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     MENU_CHANGELOG -> {
@@ -1128,6 +1129,11 @@ class MainActivity : AppCompatActivity() {
                         searchLauncher.launch(
                             Intent(this@MainActivity, MessageSearchActivity::class.java),
                         )
+                        true
+                    }
+
+                    MENU_STATS -> {
+                        startActivity(Intent(this@MainActivity, StatsActivity::class.java))
                         true
                     }
 
@@ -1715,6 +1721,7 @@ class MainActivity : AppCompatActivity() {
         private const val MENU_CONV_EXPORT = 203
         private const val MENU_CONV_DELETE = 202
         private const val MENU_SEARCH_MESSAGES = 6
+        private const val MENU_STATS = 8
         private const val MENU_EXPORT_CONVERSATION = 7
         private const val STREAM_THINKING_ID = -1L
         private const val STREAM_ASSISTANT_ID = -2L

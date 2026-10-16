@@ -24,6 +24,9 @@ interface ChatRepository {
 
     fun getMessages(conversationId: Long): List<ChatMessage>
 
+    /** 取全部会话的全部消息（按时间正序），供全局统计使用。 */
+    fun getAllMessages(): List<ChatMessage>
+
     /**
      * 全局记忆：取其他所有「全局对话」会话的消息，按时间正序。
      *

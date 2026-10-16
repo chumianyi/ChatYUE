@@ -304,8 +304,59 @@ class LocalChatRepository(context: Context) :
         }
     }
 
-    override fun searchMessages(query: String, limit: Int): List<MessageHit> {
-        val normalized = query.trim()
+    override fun getAllMessages(): List<ChatMessage> {
+        return readableDatabase.query(
+            TABLE_MESSAGES,
+            arrayOf(
+                COLUMN_ID,
+                COLUMN_CONVERSATION_ID,
+                COLUMN_ROLE,
+                COLUMN_CONTENT,
+                COLUMN_CREATED_AT,
+                COLUMN_REPLIED_TO_ID,
+                COLUMN_REPLIED_ROLE,
+                COLUMN_REPLIED_PREVIEW,
+            ),
+            null,
+            null,
+            null,
+            null,
+            "$COLUMN_CREATED_AT ASC, $COLUMN_ID ASC",
+        ).use { cursor ->
+            buildList {
+                val idIndex = cursor.getColumnIndexOrThrow(COLUMN_ID)
+                val conversationIndex =
+                    cursor.getColumnIndexOrThrow(COLUMN_CONVERSATION_ID)
+                val roleIndex = cursor.getColumnIndexOrThrow(COLUMN_ROLE)
+                val contentIndex = cursor.getColumnIndexOrThrow(COLUMN_CONTENT)
+                val createdAtIndex = cursor.getColumnIndexOrThrow(COLUMN_CREATED_AT)
+                val repliedToIdIndex = cursor.getColumnIndexOrThrow(COLUMN_REPLIED_TO_ID)
+                val repliedRoleIndex = cursor.getColumnIndexOrThrow(COLUMN_REPLIED_ROLE)
+                val repliedPreviewIndex =
+                    cursor.getColumnIndexOrThrow(COLUMN_REPLIED_PREVIEW)
+                while (cursor.moveToNext()) {
+                    add(
+                        ChatMessage(
+                            id = cursor.getLong(idIndex),
+                            conversationId = cursor.getLong(conversationIndex),
+                            role = MessageRole.valueOf(cursor.getString(roleIndex)),
+                            content = cursor.getString(contentIndex),
+                            createdAt = cursor.getLong(createdAtIndex),
+                            repliedToId = cursor.getLong(repliedToIdIndex)
+                                .takeIf { !cursor.isNull(repliedToIdIndex) },
+                            repliedRole = cursor.getString(repliedRoleIndex)
+                                ?.let { name ->
+                                    MessageRole.entries.firstOrNull { it.name == name }
+                                },
+                            repliedPreview = cursor.getString(repliedPreviewIndex),
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    override fun searchMessages(query: String, limit: Int): List<MessageHit> {        val normalized = query.trim()
         if (normalized.isEmpty()) return emptyList()
         val likeQuery = "%${escapeLike(normalized)}%"
         val sql = """
