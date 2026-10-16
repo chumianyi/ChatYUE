@@ -43,6 +43,8 @@ import com.chatyue.chat.backend.ChatMode
 import com.chatyue.chat.backend.ChatRequest
 import com.chatyue.chat.backend.ModelCatalog
 import com.chatyue.chat.databinding.ActivityMainBinding
+import com.chatyue.chat.databinding.DialogContextPanelBinding
+import com.chatyue.chat.databinding.ItemAttachmentThumbBinding
 import com.chatyue.chat.remote.RemoteConfigRepository
 import com.chatyue.chat.tools.EssayActivity
 import com.chatyue.chat.tools.TranslationActivity
@@ -106,8 +108,11 @@ class MainActivity : AppCompatActivity() {
     private var contextPanelConversationId: Long? = null
     private var contextPanelCompressing = false
 
-    private var pendingImageUri: Uri? = null
-    private var pendingImageName: String? = null
+    /**
+     * 待发送的图片附件，按用户选择顺序排列。
+     * 上限为 [AttachmentBlockBuilder.MAX_IMAGE_ATTACHMENTS] 张。
+     */
+    private val pendingImages = mutableListOf<PendingAttachment>()
     private var pendingTextName: String? = null
     private var pendingTextContent: String? = null
 
@@ -136,10 +141,23 @@ class MainActivity : AppCompatActivity() {
     ) { result ->
         if (result.resultCode != RESULT_OK) return@registerForActivityResult
         val data = result.data ?: return@registerForActivityResult
+        // 2.0 多选协议：Uri 列表 + 文件名列表，按选择顺序对应。
+        val uris = data.getParcelableArrayListExtra<Uri>(
+            ImageGalleryActivity.EXTRA_IMAGE_URIS,
+        )
+        val names = data.getStringArrayListExtra(ImageGalleryActivity.EXTRA_IMAGE_NAMES)
+        if (!uris.isNullOrEmpty()) {
+            uris.forEachIndexed { index, uri ->
+                addImageAttachment(uri, names?.getOrNull(index).orEmpty())
+            }
+            return@registerForActivityResult
+        }
+        // 兼容旧协议（单图字段）。
         val uri = data.data ?: return@registerForActivityResult
-        val name = data.getStringExtra(ImageGalleryActivity.EXTRA_IMAGE_NAME)
-            ?: getString(R.string.attachment_image_label)
-        setImageAttachment(uri, name)
+        addImageAttachment(
+            uri,
+            data.getStringExtra(ImageGalleryActivity.EXTRA_IMAGE_NAME).orEmpty(),
+        )
     }
 
     private val textFileLauncher = registerForActivityResult(
@@ -447,22 +465,82 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun setImageAttachment(uri: Uri, name: String) {
-        pendingImageUri = uri
-        pendingImageName = name
-        binding.attachmentThumb.visibility = View.VISIBLE
-        binding.attachmentThumb.setImageDrawable(null)
-        com.chatyue.chat.attachment.ImageLoader.load(
-            context = this,
-            uri = uri,
-            targetSizePx = dpToPx(72),
-            imageView = binding.attachmentThumb,
-        )
-        binding.attachmentName.text = getString(R.string.attachment_image_label) + " · " + name
-        binding.attachmentBar.visibility = View.VISIBLE
-        // 需求：上传图片时自动提示模型只支持文本。
+    /**
+     * 追加一张图片附件：去重、限流，随后重渲染缩略图行与汇总文案。
+     *
+     * 模型只识别文本，提示用户图片将以附件说明的形式发送。
+     */
+    private fun addImageAttachment(uri: Uri, name: String) {
+        if (pendingImages.any { it.uri == uri }) {
+            CompatToast.show(this, R.string.attachment_image_duplicate)
+            return
+        }
+        if (pendingImages.size >= AttachmentBlockBuilder.MAX_IMAGE_ATTACHMENTS) {
+            CompatToast.show(
+                this,
+                getString(
+                    R.string.attachment_image_limit,
+                    AttachmentBlockBuilder.MAX_IMAGE_ATTACHMENTS,
+                ),
+                android.widget.Toast.LENGTH_LONG,
+            )
+            return
+        }
+        val displayName = name.ifBlank { getString(R.string.attachment_image_label) }
+        pendingImages += PendingAttachment(uri, displayName)
+        renderImageAttachments()
         CompatToast.show(this, R.string.image_text_only_notice, android.widget.Toast.LENGTH_LONG)
         updateSendButton()
+    }
+
+    /** 把待发送的图片渲染成输入区缩略图行（每张可单独移除）。 */
+    private fun renderImageAttachments() {
+        binding.attachmentThumbRow.removeAllViews()
+        if (pendingImages.isEmpty()) {
+            binding.attachmentThumbRow.visibility = View.GONE
+            binding.attachmentBar.visibility =
+                if (hasAttachment()) View.VISIBLE else View.GONE
+            return
+        }
+        pendingImages.forEachIndexed { index, attachment ->
+            val itemBinding = ItemAttachmentThumbBinding.inflate(
+                layoutInflater,
+                binding.attachmentThumbRow,
+                false,
+            )
+            itemBinding.attachmentThumbRemove.tag = index
+            itemBinding.attachmentThumbRemove.setOnClickListener { view ->
+                pendingImages.removeAt(view.tag as Int)
+                renderImageAttachments()
+                updateSendButton()
+            }
+            com.chatyue.chat.attachment.ImageLoader.load(
+                context = this,
+                uri = attachment.uri,
+                targetSizePx = dpToPx(72),
+                imageView = itemBinding.attachmentThumbImage,
+            )
+            binding.attachmentThumbRow.addView(itemBinding.root)
+        }
+        binding.attachmentThumbRow.visibility = View.VISIBLE
+        binding.attachmentBar.visibility = View.VISIBLE
+    }
+
+    /** 附件条汇总文案：多图显示张数，单图显示文件名，文本附件附字数。 */
+    private fun updateAttachmentSummary() {
+        val parts = mutableListOf<String>()
+        if (pendingImages.isNotEmpty()) {
+            parts += if (pendingImages.size == 1) {
+                getString(R.string.attachment_image_label) + " · " + pendingImages.first().name
+            } else {
+                getString(R.string.attachment_image_many, pendingImages.size)
+            }
+        }
+        pendingTextName?.takeIf { pendingTextContent != null }?.let { textName ->
+            parts += getString(R.string.attachment_text_label) + " · " + textName +
+                "（" + (pendingTextContent?.length ?: 0) + " 字）"
+        }
+        binding.attachmentName.text = parts.joinToString(" · ")
     }
 
     private fun readTextAttachment(uri: Uri) {
@@ -477,10 +555,7 @@ class MainActivity : AppCompatActivity() {
                     else -> {
                         pendingTextName = name
                         pendingTextContent = content
-                        binding.attachmentThumb.visibility = View.GONE
-                        binding.attachmentName.text =
-                            getString(R.string.attachment_text_label) + " · " + name +
-                                "（" + content.length + " 字）"
+                        updateAttachmentSummary()
                         binding.attachmentBar.visibility = View.VISIBLE
                         updateSendButton()
                     }
@@ -490,35 +565,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun clearAttachments() {
-        pendingImageUri = null
-        pendingImageName = null
+        pendingImages.clear()
         pendingTextName = null
         pendingTextContent = null
-        binding.attachmentThumb.setImageDrawable(null)
+        binding.attachmentThumbRow.removeAllViews()
+        binding.attachmentThumbRow.visibility = View.GONE
         binding.attachmentBar.visibility = View.GONE
         updateSendButton()
     }
 
     private fun hasAttachment(): Boolean =
-        pendingImageUri != null || pendingTextContent != null
+        pendingImages.isNotEmpty() || pendingTextContent != null
 
-    /** 把附件内容拼进用户消息：图片只做说明，txt 内容直接内联给模型读取。 */
-    private fun buildAttachmentBlock(): String {
-        val block = StringBuilder()
-        pendingImageName?.let { name ->
-            block.append("\n\n[图片附件] ")
-                .append(name)
-                .append("（本模型仅支持识别文本，无法识别图片内容）")
-        }
-        pendingTextContent?.let { content ->
-            block.append("\n\n[文本附件] ")
-                .append(pendingTextName ?: "")
-                .append('\n')
-                .append(content)
-                .append("\n[/文本附件]")
-        }
-        return block.toString()
-    }
+    /** 把附件内容拼进用户消息：图片只做说明（多图列出各文件名），txt 内容直接内联给模型读取。 */
+    private fun buildAttachmentBlock(): String =
+        AttachmentBlockBuilder.build(
+            imageNames = pendingImages.map { it.name },
+            textName = pendingTextName,
+            textContent = pendingTextContent,
+        )
 
     // ---------------- 生成 ----------------
 
@@ -1985,3 +2050,9 @@ class MainActivity : AppCompatActivity() {
         private const val GLOBAL_MEMORY_MAX_MESSAGES = 60
     }
 }
+
+/** 待发送的一张图片附件。2.0 起输入区支持多图，按选择顺序排列。 */
+private data class PendingAttachment(
+    val uri: Uri,
+    val name: String,
+)

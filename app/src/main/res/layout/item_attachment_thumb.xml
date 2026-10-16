@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 附件缩略图：图 + 右上角删除小钮，用于输入区多图附件条。 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="40dp"
+    android:layout_height="40dp">
+
+    <ImageView
+        android:id="@+id/attachmentThumbImage"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_card"
+        android:contentDescription="@string/attachment_image_label"
+        android:scaleType="centerCrop" />
+
+    <ImageView
+        android:id="@+id/attachmentThumbRemove"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_gravity="top|end"
+        android:background="@drawable/shape_circle_blue"
+        android:contentDescription="@string/attach_remove"
+        android:padding="3dp"
+        android:src="@drawable/ic_close_white" />
+</FrameLayout>

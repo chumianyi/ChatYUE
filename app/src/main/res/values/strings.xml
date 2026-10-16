@@ -128,6 +128,15 @@
     <string name="attach_remove">移除附件</string>
     <string name="pick_image_title">选择图片</string>
     <string name="pick_image_empty">相册中没有找到任何图片</string>
+    <string name="gallery_pick_hint">点击选择图片，可多选</string>
+    <string name="gallery_selected_one">已选择 1 张图片</string>
+    <string name="gallery_selected_many">已选择 %1$d 张图片（%2$d）</string>
+    <string name="gallery_confirm">完成</string>
+    <string name="gallery_pick_none">请先选择至少一张图片</string>
+    <string name="gallery_pick_limit">最多只能选择 %1$d 张图片</string>
+    <string name="attachment_image_limit">最多只能添加 %1$d 张图片</string>
+    <string name="attachment_image_duplicate">这张图片已经添加过了</string>
+    <string name="attachment_image_many">图片附件 · 共 %1$d 张</string>
     <string name="media_permission_denied">未获得相册权限，无法查看设备中的图片</string>
     <string name="image_text_only_notice">本模型仅支持识别文本，图片将作为附件发送</string>
     <string name="attachment_reading">正在读取文件…</string>

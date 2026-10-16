@@ -53,4 +53,40 @@
         android:padding="6dp"
         android:scrollbars="none"
         tools:listitem="@layout/item_gallery_image" />
+
+    <!-- 多选确认条：已选数量 + 完成按钮，未选时按钮置灰。 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_composer"
+        android:elevation="2dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:id="@+id/selectedCountLabel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/gallery_pick_hint"
+            android:textColor="@color/ds_text_secondary"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/confirmSelectionButton"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_primary_button"
+            android:gravity="center"
+            android:minWidth="96dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:text="@string/gallery_confirm"
+            android:textColor="@color/ds_surface"
+            android:textSize="14sp" />
+    </LinearLayout>
 </LinearLayout>
