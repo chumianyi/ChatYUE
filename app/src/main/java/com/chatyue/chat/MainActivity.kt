@@ -97,6 +97,9 @@ class MainActivity : AppCompatActivity() {
     private var pendingMessageReloadConversationId: Long? = null
     private var pendingMessageListScroll: Runnable? = null
 
+    /** 「回到底部」未读计数：逻辑抽成纯类，便于单测。 */
+    private val bottomArrivals = BottomArrivalCounter()
+
     private var pendingImageUri: Uri? = null
     private var pendingImageName: String? = null
     private var pendingTextName: String? = null
@@ -282,8 +285,11 @@ class MainActivity : AppCompatActivity() {
                     } else if (newState == RecyclerView.SCROLL_STATE_IDLE) {
                         followStreaming = !recyclerView.canScrollVertically(1)
                         if (followStreaming) {
+                            // 回到底部：未读提示清零，补上被跳过的增量。
+                            bottomArrivals.clearOnReturnToBottom()
                             applyPendingMessageUpdate()
                         }
+                        updateJumpToBottom()
                     }
                 }
 
@@ -295,8 +301,19 @@ class MainActivity : AppCompatActivity() {
                     if (recyclerView.scrollState != RecyclerView.SCROLL_STATE_IDLE) {
                         followStreaming = !recyclerView.canScrollVertically(1)
                     }
+                    updateJumpToBottom()
                 }
             })
+        }
+
+        binding.jumpToBottomBar.setOnClickListener {
+            followStreaming = true
+            bottomArrivals.clearOnReturnToBottom()
+            cancelPendingMessageListScroll(binding.messageList)
+            applyPendingMessageUpdate()
+            scrollMessageListToBottom()
+            // 先隐藏按钮：滚动到位前 canScrollVertically 仍旧为 true，避免闪烁。
+            updateJumpToBottom(forceVisible = false)
         }
 
         conversationAdapter = ConversationAdapter(::selectConversation, ::onConversationLongPress)
@@ -672,6 +689,7 @@ class MainActivity : AppCompatActivity() {
         followStreaming = true
         pendingStreamingState = null
         pendingMessageReloadConversationId = null
+        bottomArrivals.reset()
         loadMessages(conversationId)
 
         dispatchChatRequest(conversationId)
@@ -772,6 +790,7 @@ class MainActivity : AppCompatActivity() {
         followStreaming = true
         pendingStreamingState = null
         pendingMessageReloadConversationId = null
+        bottomArrivals.reset()
         binding.chatTitle.setText(R.string.new_chat)
         binding.messageInput.text?.clear()
         clearAttachments()
@@ -931,6 +950,7 @@ class MainActivity : AppCompatActivity() {
         binding.messageList.visibility = if (hasMessages) View.VISIBLE else View.GONE
         messageAdapter.setStreamingMessageId(streamingMessageId)
         messageAdapter.submitMessages(messages)
+        trackAwayArrivals(messages)
         updateContextIndicator(messages)
         cancelPendingMessageListScroll(binding.messageList)
         if (hasMessages && scrollToEnd) {
@@ -940,6 +960,43 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * 未读消息追踪：用户不在底部时，把新到达的消息计入未读计数，
+     * 「回到底部」按钮随之显示条数；待在底部或列表为空时清零。
+     */
+    private fun trackAwayArrivals(messages: List<ChatMessage>) {
+        val atBottom = followStreaming
+        bottomArrivals.onRender(messages.lastOrNull()?.id, atBottom)
+        updateJumpToBottom(forceVisible = if (atBottom) false else true)
+    }
+
+    /**
+     * 刷新「回到底部」按钮：离开底部出现，带回未读条数；回到底部或没有消息时隐藏。
+     *
+     * @param forceVisible 非空时直接指定显隐，用于消息到达等视图尚未布局完成的时刻。
+     */
+    private fun updateJumpToBottom(forceVisible: Boolean? = null) {
+        if (binding.messageList.childCount == 0 && messageAdapter.itemCount == 0) {
+            binding.jumpToBottomBar.visibility = View.GONE
+            binding.jumpToBottomCount.visibility = View.GONE
+            return
+        }
+        val visible = forceVisible
+            ?: (binding.messageList.childCount > 0 && binding.messageList.canScrollVertically(1))
+        val unread = bottomArrivals.unreadCount
+        if (visible && unread > 0) {
+            binding.jumpToBottomBar.contentDescription =
+                getString(R.string.jump_to_bottom_unread, unread)
+            binding.jumpToBottomCount.visibility = View.VISIBLE
+            binding.jumpToBottomCount.text =
+                getString(R.string.jump_to_bottom_unread, unread)
+        } else {
+            binding.jumpToBottomBar.contentDescription = getString(R.string.jump_to_bottom)
+            binding.jumpToBottomCount.visibility = View.GONE
+        }
+        binding.jumpToBottomBar.visibility = if (visible) View.VISIBLE else View.GONE
     }
 
     /**

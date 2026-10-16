@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 回到底部图标：向下箭头，风格对齐 ic_chevron_down / ic_prompt。 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="20dp"
+    android:height="20dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@color/ds_text_secondary"
+        android:pathData="M12,4C12.55,4 13,4.45 13,5L13,14.17L16.29,10.88C16.68,10.49 17.31,10.49 17.7,10.88C18.09,11.27 18.09,11.9 17.7,12.29L12.7,17.29C12.31,17.68 11.68,17.68 11.29,17.29L6.29,12.29C5.9,11.9 5.9,11.27 6.29,10.88C6.68,10.49 7.31,10.49 7.7,10.88L11,14.17L11,5C11,4.45 11.45,4 12,4ZM5,19C4.45,19 4,19.45 4,20C4,20.55 4.45,21 5,21L19,21C19.55,21 20,20.55 20,20C20,19.45 19.55,19 19,19L5,19Z" />
+</vector>

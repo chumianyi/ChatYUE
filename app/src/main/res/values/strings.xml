@@ -181,6 +181,8 @@
     <string name="action_delete">删除</string>
     <string name="action_delete_done">已删除</string>
     <string name="action_regenerate_started">正在重新生成回答</string>
+    <string name="jump_to_bottom">回到底部</string>
+    <string name="jump_to_bottom_unread">%1$d 条新消息</string>
     <string name="message_longpress_title">消息操作</string>
     <string name="confirm_delete_message_title">删除这条消息？</string>
     <string name="confirm_delete_message">删除后无法恢复，确定要删除这条消息吗？</string>
