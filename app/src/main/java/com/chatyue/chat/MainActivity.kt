@@ -259,11 +259,12 @@ class MainActivity : AppCompatActivity() {
             Markwon.create(this),
             ::handleMessageAction,
             ::handleMessageLongPress,
+            { count ->
+                updateSelectionTitle(count)
+            },
             // 点击消息里的引用块：滚动定位到被引用的消息并短暂高亮。
             onReplyQuoteClick = ::jumpToRepliedMessage,
-        ) { count ->
-            updateSelectionTitle(count)
-        }
+        )
         binding.messageList.apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = messageAdapter
