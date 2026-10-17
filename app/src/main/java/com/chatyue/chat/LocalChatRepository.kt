@@ -110,6 +110,31 @@ class LocalChatRepository(context: Context) :
                     "$COLUMN_TAGS TEXT NOT NULL DEFAULT '[]'",
             )
         }
+        if (oldVersion < 7) {
+            // 6 -> 7：补齐标签字典表。此前 v6 仅在 onCreate 建表、升级路径漏建，
+            // 导致老库升级后缺失 tags 表，getTags() 查询直接崩溃。
+            // 用 IF NOT EXISTS 兼容「已到 v6 但缺表」的损坏老库。
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS $TABLE_TAGS (" +
+                    "$COLUMN_ID INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                    "$COLUMN_NAME TEXT NOT NULL, " +
+                    "$COLUMN_COLOR TEXT NOT NULL)",
+            )
+        }
+    }
+
+    /**
+     * 防御性兜底：确保标签字典表存在。
+     * 任何标签相关查询前调用，避免「数据库版本已升、但 tags 表因历史升级缺口缺失」
+     * 这类情况下再次触发 no such table 崩溃。
+     */
+    private fun ensureTagTable() {
+        writableDatabase.execSQL(
+            "CREATE TABLE IF NOT EXISTS $TABLE_TAGS (" +
+                "$COLUMN_ID INTEGER PRIMARY KEY AUTOINCREMENT, " +
+                "$COLUMN_NAME TEXT NOT NULL, " +
+                "$COLUMN_COLOR TEXT NOT NULL)",
+        )
     }
 
     override fun createConversation(
@@ -775,6 +800,7 @@ class LocalChatRepository(context: Context) :
     // ---------------- 会话标签 ----------------
 
     override fun getTags(): List<Tag> {
+        ensureTagTable()
         return readableDatabase.query(
             TABLE_TAGS,
             arrayOf(COLUMN_ID, COLUMN_NAME, COLUMN_COLOR),
@@ -801,8 +827,9 @@ class LocalChatRepository(context: Context) :
         }
     }
 
-    override fun addTag(name: String, colorHex: String): Long =
-        writableDatabase.insertOrThrow(
+    override fun addTag(name: String, colorHex: String): Long {
+        ensureTagTable()
+        return writableDatabase.insertOrThrow(
             TABLE_TAGS,
             null,
             ContentValues().apply {
@@ -810,8 +837,10 @@ class LocalChatRepository(context: Context) :
                 put(COLUMN_COLOR, colorHex)
             },
         )
+    }
 
     override fun updateTag(tag: Tag) {
+        ensureTagTable()
         writableDatabase.update(
             TABLE_TAGS,
             ContentValues().apply {
@@ -824,6 +853,7 @@ class LocalChatRepository(context: Context) :
     }
 
     override fun deleteTag(tagId: Long) {
+        ensureTagTable()
         writableDatabase.delete(
             TABLE_TAGS,
             "$COLUMN_ID = ?",
@@ -887,7 +917,7 @@ class LocalChatRepository(context: Context) :
 
     companion object {
         private const val DATABASE_NAME = "chatyue.db"
-        private const val DATABASE_VERSION = 6
+        private const val DATABASE_VERSION = 7
         private const val SUMMARY_CREATED_AT = 1L
 
         /** SQLite 单条语句的变量数上限，批量删除按此分片，避免超出 999 限制。 */
