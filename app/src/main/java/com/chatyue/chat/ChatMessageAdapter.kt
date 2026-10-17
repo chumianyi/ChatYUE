@@ -316,6 +316,17 @@ class ChatMessageAdapter(
         return disliked
     }
 
+    /** 同步某条消息的收藏状态到列表数据并刷新该行。 */
+    fun updateStarred(messageId: Long, starred: Boolean) {
+        val position = rowIndexOf(messageId)
+        if (position < 0) return
+        val row = rows[position] as? ChatRow.Message ?: return
+        // 直接改写该行携带的 message 副本，避免依赖上层重载整张列表。
+        rows[position] = ChatRow.Message(row.message.copy(starred = starred))
+        // 整行重绑以刷新 ViewHolder 内持有的 current，确保下次长按菜单拿到最新 starred。
+        notifyItemChanged(position)
+    }
+
     // ---------------- 消息多选 ----------------
     /** 是否处于多选模式。 */
     fun isSelectionMode(): Boolean = selectionMode
@@ -441,6 +452,9 @@ class ChatMessageAdapter(
         ) {
             current = message
             binding.messageText.text = message.content
+            binding.timeLabel.text = MessageTimeFormatter.format(
+                message.createdAt, System.currentTimeMillis(),
+            )
             bindReplyQuote(message)
             bindSelection(message, selectionMode, selected)
             bindHighlight(message, highlighted)
@@ -540,7 +554,9 @@ class ChatMessageAdapter(
         ) {
             current = message
             binding.assistantLogo.visibility = if (showLogo) View.VISIBLE else View.GONE
-            markwon.setMarkdown(binding.messageText, message.content)
+            val extraction = CodeBlockExtractor.extract(message.content)
+            markwon.setMarkdown(binding.messageText, extraction.remainingText)
+            renderCodePreviews(extraction.blocks)
             bindReplyQuote(message)
 
             // 复用视图时清掉上一次的复制反馈。
@@ -550,6 +566,27 @@ class ChatMessageAdapter(
             bindActions(showActions, liked, disliked, speaking)
             bindSelection(message, selectionMode, selected)
             bindHighlight(message, highlighted)
+            binding.timeLabel.text = MessageTimeFormatter.format(
+                message.createdAt, System.currentTimeMillis(),
+            )
+        }
+
+        /** 把可预览代码块渲染成独立卡片；无块时隐藏容器并回收旧 WebView。 */
+        private fun renderCodePreviews(blocks: List<CodePreviewBlock>) {
+            repeat(binding.codePreviewContainer.childCount) { index ->
+                (binding.codePreviewContainer.getChildAt(index) as? CodePreviewCard)?.destroy()
+            }
+            binding.codePreviewContainer.removeAllViews()
+            if (blocks.isEmpty()) {
+                binding.codePreviewContainer.visibility = View.GONE
+                return
+            }
+            binding.codePreviewContainer.visibility = View.VISIBLE
+            blocks.forEach { block ->
+                binding.codePreviewContainer.addView(
+                    CodePreviewCard(binding.root.context, markwon).apply { bind(block) },
+                )
+            }
         }
 
         /** 多选视觉：指示器显隐 + 文本选中态。 */

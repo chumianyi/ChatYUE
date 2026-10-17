@@ -21,6 +21,19 @@ data class Conversation(
     val updatedAt: Long,
     val memoryMode: ConversationMemoryMode = ConversationMemoryMode.GLOBAL,
     val pinned: Boolean = false,
+    /** 该会话挂载的标签 id 列表，用于在侧边栏按标签筛选与归类。 */
+    val tags: List<Long> = emptyList(),
+)
+
+/**
+ * 会话标签：用户自建的彩色分类，可挂在多个会话上。
+ *
+ * [colorHex] 形如 `#FF4D6BFE`，既用于列表里的色点，也用于筛选 chip 的描边。
+ */
+data class Tag(
+    val id: Long,
+    val name: String,
+    val colorHex: String,
 )
 
 enum class MessageRole {
@@ -52,6 +65,8 @@ data class ChatMessage(
     val repliedRole: MessageRole? = null,
     /** 被引用内容的摘要预览，长文本会被截断后存入。 */
     val repliedPreview: String? = null,
+    /** 是否被用户收藏（星标），收藏的消息可在「收藏」列表里集中查看。 */
+    val starred: Boolean = false,
 )
 
 /**
@@ -66,6 +81,12 @@ data class MessageHit(
     val role: MessageRole,
     val content: String,
     val createdAt: Long,
+)
+
+/** 收藏列表里的一条消息，附带它所属会话的标题。 */
+data class StarredMessage(
+    val message: ChatMessage,
+    val conversationTitle: String,
 )
 
 /** 侧边栏会话按时间由近到远分组。 */

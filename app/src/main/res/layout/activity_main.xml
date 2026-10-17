@@ -74,6 +74,15 @@
                     android:contentDescription="@string/create_new_chat"
                     android:padding="13dp"
                     android:src="@drawable/ic_new_chat" />
+
+                <androidx.appcompat.widget.AppCompatImageButton
+                    android:id="@+id/inSearchButton"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/search_in_conversation"
+                    android:padding="13dp"
+                    android:src="@drawable/ic_search" />
             </LinearLayout>
 
             <!-- 消息多选操作栏：进入多选后覆盖在标题栏之上 -->
@@ -155,6 +164,71 @@
                 android:contentDescription="@string/action_delete"
                 android:padding="9dp"
                 android:src="@drawable/ic_action_delete" />
+        </LinearLayout>
+
+        <!-- 会话内搜索栏：输入关键词后在当前会话里上下跳转命中消息 -->
+        <LinearLayout
+            android:id="@+id/searchBar"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/ds_surface"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="4dp"
+            android:paddingEnd="8dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/searchClose"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/cancel"
+                android:padding="12dp"
+                android:src="@drawable/ic_close" />
+
+            <EditText
+                android:id="@+id/searchInputConv"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@null"
+                android:hint="@string/search_in_hint"
+                android:imeOptions="actionSearch"
+                android:inputType="text"
+                android:maxLines="1"
+                android:textColor="@color/ds_text_primary"
+                android:textColorHint="@color/ds_text_tertiary"
+                android:textSize="15sp" />
+
+            <TextView
+                android:id="@+id/searchCount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="42dp"
+                android:gravity="center"
+                android:textColor="@color/ds_text_secondary"
+                android:textSize="12sp"
+                android:visibility="gone" />
+
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/searchPrev"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/search_previous"
+                android:padding="9dp"
+                android:src="@drawable/ic_chevron_up" />
+
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/searchNext"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/search_next"
+                android:padding="9dp"
+                android:src="@drawable/ic_chevron_down" />
         </LinearLayout>
         </FrameLayout>
 
@@ -509,6 +583,81 @@
                 android:text="@string/tool_essay" />
         </LinearLayout>
 
+        <LinearLayout
+            android:id="@+id/toolCodeExplain"
+            style="@style/Widget.ChatYUE.DrawerToolRow">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_tool_code" />
+
+            <TextView
+                style="@style/Widget.ChatYUE.DrawerToolLabel"
+                android:text="@string/tool_code_explain" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/toolPolish"
+            style="@style/Widget.ChatYUE.DrawerToolRow">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_tool_polish" />
+
+            <TextView
+                style="@style/Widget.ChatYUE.DrawerToolLabel"
+                android:text="@string/tool_polish" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/toolSummary"
+            style="@style/Widget.ChatYUE.DrawerToolRow">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_tool_summary" />
+
+            <TextView
+                style="@style/Widget.ChatYUE.DrawerToolLabel"
+                android:text="@string/tool_summary" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/toolStarred"
+            style="@style/Widget.ChatYUE.DrawerToolRow">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_star" />
+
+            <TextView
+                style="@style/Widget.ChatYUE.DrawerToolLabel"
+                android:text="@string/starred_title" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/toolTags"
+            style="@style/Widget.ChatYUE.DrawerToolRow">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_tag" />
+
+            <TextView
+                style="@style/Widget.ChatYUE.DrawerToolLabel"
+                android:text="@string/tags_manage" />
+        </LinearLayout>
+
 
 
         <View
@@ -547,6 +696,23 @@
                 android:textColorHint="@color/ds_text_tertiary"
                 android:textSize="15sp" />
         </FrameLayout>
+
+        <HorizontalScrollView
+            android:id="@+id/tagFilterScroller"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:scrollbars="none"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/tagFilterRow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp" />
+        </HorizontalScrollView>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/conversationList"

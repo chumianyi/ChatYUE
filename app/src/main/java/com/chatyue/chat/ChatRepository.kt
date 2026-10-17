@@ -24,6 +24,12 @@ interface ChatRepository {
 
     fun getMessages(conversationId: Long): List<ChatMessage>
 
+    /** 收藏 / 取消收藏某条消息。 */
+    fun setMessageStarred(messageId: Long, starred: Boolean)
+
+    /** 全部已收藏的消息，附带所属会话标题，按时间倒序。 */
+    fun getStarredMessages(): List<StarredMessage>
+
     /** 取全部会话的全部消息（按时间正序），供全局统计使用。 */
     fun getAllMessages(): List<ChatMessage>
 
@@ -72,6 +78,9 @@ interface ChatRepository {
      */
     fun deleteMessagesAfter(messageId: Long)
 
+    /** 清空整个会话的消息（保留会话本身），用于「清空对话」。 */
+    fun clearConversationMessages(conversationId: Long)
+
     fun finalizeInterruptedThinking()
 
     /**
@@ -98,4 +107,21 @@ interface ChatRepository {
      * @param limit 最多返回的条数。
      */
     fun searchMessages(query: String, limit: Int = 100): List<MessageHit>
+
+    // ---------------- 会话标签 ----------------
+
+    /** 返回全部标签，按名称排序。 */
+    fun getTags(): List<Tag>
+
+    /** 新建标签，返回新标签 id。 */
+    fun addTag(name: String, colorHex: String): Long
+
+    /** 更新已有标签的名称与颜色。 */
+    fun updateTag(tag: Tag)
+
+    /** 删除标签，并把它从所有会话上摘掉。 */
+    fun deleteTag(tagId: Long)
+
+    /** 设置某个会话挂载的标签集合（全量覆盖）。 */
+    fun setConversationTags(conversationId: Long, tagIds: List<Long>)
 }

@@ -121,9 +121,21 @@
 
         <activity
             android:name=".tools.EssayActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".tools.PromptToolActivity"
             android:exported="false"
             android:theme="@style/Theme.ChatYUE.Tool"
             android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".StarredActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".TagsActivity"
+            android:exported="false" />
 
         <!-- 会话导出稿分享：仅暴露缓存 exports 目录，外部应用只读。 -->
         <provider

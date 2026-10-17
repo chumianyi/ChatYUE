@@ -60,6 +60,14 @@
             android:textSize="15sp" />
 
         <LinearLayout
+            android:id="@+id/codePreviewContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:orientation="vertical"
+            android:visibility="gone" />
+
+        <LinearLayout
             android:id="@+id/messageActions"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -111,5 +119,14 @@
                 android:scaleType="fitCenter"
                 android:src="@drawable/ic_volume" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/timeLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/ds_text_tertiary"
+            android:textSize="11sp"
+            tools:text="昨天 21:30" />
     </LinearLayout>
 </LinearLayout>

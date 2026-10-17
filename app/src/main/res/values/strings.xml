@@ -15,6 +15,12 @@
     <string name="voice_input_prompt">请说话，我来打字</string>
     <string name="voice_input_unavailable">当前设备没有可用的语音识别</string>
     <string name="search_conversations">搜索对话内容…</string>
+    <string name="search_in_conversation">在当前会话内搜索</string>
+    <string name="search_in_hint">搜索当前会话…</string>
+    <string name="search_previous">上一条</string>
+    <string name="search_next">下一条</string>
+    <string name="search_count">%1$d/%2$d</string>
+    <string name="search_no_match">没有匹配的消息</string>
     <string name="account_name">ChatYUE</string>
     <string name="more_options">更多选项</string>
     <string name="navigate_back">返回</string>
@@ -48,6 +54,33 @@
     <string name="tools_title">功能</string>
     <string name="tool_translate">智能翻译</string>
     <string name="tool_essay">一起作文</string>
+    <string name="tool_code_explain">代码解释</string>
+    <string name="tool_polish">文本润色</string>
+    <string name="tool_summary">文本摘要</string>
+
+    <!-- 通用提示词工具 -->
+    <string name="tool_input_label">输入内容</string>
+    <string name="tool_result_label">结果</string>
+    <string name="tool_start">开始</string>
+    <string name="tool_empty_input">请先输入内容</string>
+    <string name="tool_explain_action">解释代码</string>
+    <string name="tool_polish_action">润色</string>
+    <string name="tool_summary_action">生成摘要</string>
+    <string name="tool_lang_auto">自动识别</string>
+    <string name="tool_tone_formal">正式</string>
+    <string name="tool_tone_spoken">口语</string>
+    <string name="tool_tone_business">商务</string>
+    <string name="tool_tone_academic">学术</string>
+    <string name="tool_len_short">简短</string>
+    <string name="tool_len_medium">中等</string>
+    <string name="tool_len_long">详细</string>
+
+    <string name="tool_code_explain_prompt">你是一名资深工程师，擅长用通俗的语言解释代码。\n请解释下面这段代码：它做什么、核心逻辑是什么、有哪些值得注意的地方。\n要求：\n1. 先一句话概括这段代码的作用；\n2. 再分点说明核心逻辑与关键实现；\n3. 指出潜在的边界情况、性能或安全问题；\n4. 使用 Markdown，必要时用代码块举例；\n5. 不要复述我的要求，直接给出解释。</string>
+    <string name="tool_code_explain_placeholder">粘贴要解释的代码…</string>
+    <string name="tool_polish_prompt">你是一名文字润色助手。请在保持原意与关键信息不变的前提下，对用户输入的文本进行润色，使其更通顺、得体。\n要求：\n1. 只输出润色后的文本，不输出解释或前后对比；\n2. 纠正错别字与病句，优化表达；\n3. 不改写核心意思，不增删关键事实；\n4. 保持原文的语言与大致长度。</string>
+    <string name="tool_polish_placeholder">粘贴要润色的文本…</string>
+    <string name="tool_summary_prompt">你是一名摘要助手。请对用户输入的文本进行摘要，提炼核心内容。\n要求：\n1. 只输出摘要本身，不输出解释；\n2. 保留关键事实、结论与数字；\n3. 逻辑清晰，按要点或段落组织；\n4. 不要复述我的要求。</string>
+    <string name="tool_summary_placeholder">粘贴要摘要的长文本…</string>
 
     <!-- 关于 -->
     <string name="about_menu">关于</string>
@@ -202,6 +235,48 @@
     <string name="action_dislike">点踩</string>
     <string name="action_speak">朗读</string>
     <string name="action_stop_speak">停止朗读</string>
+
+    <!-- 代码预览卡片 -->
+    <string name="code_preview_html">HTML</string>
+    <string name="code_preview_markdown">Markdown</string>
+    <string name="code_preview_mode_preview">预览</string>
+    <string name="code_preview_mode_code">代码</string>
+    <string name="code_preview_copy">复制代码</string>
+    <string name="code_preview_download">下载代码</string>
+    <string name="code_preview_hidden_lines">余下 %1$d 行已省略</string>
+    <string name="code_preview_share_title">分享代码文件</string>
+
+    <!-- 消息收藏（星标） -->
+    <string name="starred_title">收藏</string>
+    <string name="starred_empty_content">（无内容）</string>
+    <string name="starred_open">打开</string>
+    <string name="starred_unstar">取消收藏</string>
+    <string name="action_star">收藏</string>
+    <string name="action_unstar">取消收藏</string>
+    <string name="action_star_done">已收藏</string>
+    <string name="action_unstar_done">已取消收藏</string>
+
+    <!-- 会话标签 -->
+    <string name="tags_title">标签管理</string>
+    <string name="tags_manage">标签管理</string>
+    <string name="tags_empty">还没有标签，点下面的按钮新建一个吧</string>
+    <string name="tags_add">新建标签</string>
+    <string name="tags_edit">编辑标签</string>
+    <string name="tags_name_hint">标签名称</string>
+    <string name="tags_name_placeholder">例如：工作、学习、灵感</string>
+    <string name="tags_name_required">请填写标签名称</string>
+    <string name="tags_color_hint">选择颜色</string>
+    <string name="tags_delete_title">删除标签？</string>
+    <string name="tags_delete_confirm">标签「%1$s」将被删除，且从所有会话上摘掉，确定继续吗？</string>
+    <string name="action_tag">标签</string>
+    <string name="tag_filter_title">按标签筛选</string>
+    <string name="tag_filter_all">全部</string>
+    <string name="tag_filter_active">筛选中：%1$s</string>
+    <string name="tag_filter_empty">还没有标签，先去「标签管理」新建</string>
+    <string name="tag_picker_title">给会话添加标签</string>
+    <string name="tag_picker_save">保存</string>
+    <string name="tag_picker_none">暂不添加标签</string>
+    <string name="tag_assigned_done">已更新标签</string>
     <string name="speak_unsupported">当前页面不支持朗读</string>
     <string name="speak_started">正在朗读</string>
     <string name="speak_stopped">已停止朗读</string>
@@ -215,6 +290,11 @@
     <string name="action_share">分享</string>
     <string name="share_empty">这条消息没有可分享的内容</string>
     <string name="share_no_app">没有找到可分享的应用</string>
+    <string name="action_forward">转发</string>
+    <string name="forward_title">转发到</string>
+    <string name="forward_empty">这条消息没有内容</string>
+    <string name="forward_no_target">没有其它会话可转发</string>
+    <string name="forward_done">已转发到「%1$s」</string>
     <string name="action_regenerate_started">正在重新生成回答</string>
     <string name="jump_to_bottom">回到底部</string>
     <string name="jump_to_bottom_unread">%1$d 条新消息</string>
@@ -228,6 +308,11 @@
     <string name="action_unpin">取消置顶</string>
     <string name="action_rename_conversation">重命名</string>
     <string name="action_delete_conversation">删除会话</string>
+    <string name="action_clear_messages">清空消息</string>
+    <string name="confirm_clear_messages_title">清空消息？</string>
+    <string name="confirm_clear_messages">该会话的全部消息将被删除，但会话本身会保留，确定继续吗？</string>
+    <string name="confirm_clear_positive">清空</string>
+    <string name="toast_messages_cleared">已清空消息</string>
     <string name="rename_conversation_title">重命名会话</string>
     <string name="rename_conversation_hint">请输入新的标题</string>
     <string name="action_confirm">确定</string>

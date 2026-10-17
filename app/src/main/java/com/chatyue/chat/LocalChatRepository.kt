@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import org.json.JSONArray
 
 class LocalChatRepository(context: Context) :
     SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION),
@@ -22,7 +23,17 @@ class LocalChatRepository(context: Context) :
                 $COLUMN_TITLE TEXT NOT NULL,
                 $COLUMN_UPDATED_AT INTEGER NOT NULL,
                 $COLUMN_MEMORY_MODE TEXT NOT NULL DEFAULT 'GLOBAL',
-                $COLUMN_PINNED INTEGER NOT NULL DEFAULT 0
+                $COLUMN_PINNED INTEGER NOT NULL DEFAULT 0,
+                $COLUMN_TAGS TEXT NOT NULL DEFAULT '[]'
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            CREATE TABLE $TABLE_TAGS (
+                $COLUMN_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                $COLUMN_NAME TEXT NOT NULL,
+                $COLUMN_COLOR TEXT NOT NULL
             )
             """.trimIndent(),
         )
@@ -37,6 +48,7 @@ class LocalChatRepository(context: Context) :
                 $COLUMN_REPLIED_TO_ID INTEGER,
                 $COLUMN_REPLIED_ROLE TEXT,
                 $COLUMN_REPLIED_PREVIEW TEXT,
+                $COLUMN_STARRED INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY($COLUMN_CONVERSATION_ID)
                     REFERENCES $TABLE_CONVERSATIONS($COLUMN_ID)
                     ON DELETE CASCADE
@@ -82,6 +94,20 @@ class LocalChatRepository(context: Context) :
             db.execSQL(
                 "ALTER TABLE $TABLE_MESSAGES ADD COLUMN " +
                     "$COLUMN_REPLIED_PREVIEW TEXT",
+            )
+        }
+        if (oldVersion < 5) {
+            // 4 -> 5：消息表新增「收藏」列，老消息默认未收藏。
+            db.execSQL(
+                "ALTER TABLE $TABLE_MESSAGES ADD COLUMN " +
+                    "$COLUMN_STARRED INTEGER NOT NULL DEFAULT 0",
+            )
+        }
+        if (oldVersion < 6) {
+            // 5 -> 6：会话表新增「标签」列（存储标签 id 的 JSON 数组）。
+            db.execSQL(
+                "ALTER TABLE $TABLE_CONVERSATIONS ADD COLUMN " +
+                    "$COLUMN_TAGS TEXT NOT NULL DEFAULT '[]'",
             )
         }
     }
@@ -148,7 +174,8 @@ class LocalChatRepository(context: Context) :
                     c.$COLUMN_TITLE,
                     c.$COLUMN_UPDATED_AT,
                     c.$COLUMN_MEMORY_MODE,
-                    c.$COLUMN_PINNED
+                    c.$COLUMN_PINNED,
+                    c.$COLUMN_TAGS
                 FROM $TABLE_CONVERSATIONS c
                 LEFT JOIN $TABLE_MESSAGES m
                     ON c.$COLUMN_ID = m.$COLUMN_CONVERSATION_ID
@@ -168,6 +195,7 @@ class LocalChatRepository(context: Context) :
                 val updatedAtIndex = cursor.getColumnIndexOrThrow(COLUMN_UPDATED_AT)
                 val memoryModeIndex = cursor.getColumnIndexOrThrow(COLUMN_MEMORY_MODE)
                 val pinnedIndex = cursor.getColumnIndexOrThrow(COLUMN_PINNED)
+                val tagsIndex = cursor.getColumnIndexOrThrow(COLUMN_TAGS)
                 while (cursor.moveToNext()) {
                     add(
                         Conversation(
@@ -178,6 +206,7 @@ class LocalChatRepository(context: Context) :
                                 cursor.getString(memoryModeIndex),
                             ),
                             pinned = cursor.getInt(pinnedIndex) == 1,
+                            tags = decodeTagIds(cursor.getString(tagsIndex)),
                         ),
                     )
                 }
@@ -188,7 +217,14 @@ class LocalChatRepository(context: Context) :
     override fun getConversation(conversationId: Long): Conversation? {
         return readableDatabase.query(
             TABLE_CONVERSATIONS,
-            arrayOf(COLUMN_ID, COLUMN_TITLE, COLUMN_UPDATED_AT, COLUMN_MEMORY_MODE, COLUMN_PINNED),
+            arrayOf(
+                COLUMN_ID,
+                COLUMN_TITLE,
+                COLUMN_UPDATED_AT,
+                COLUMN_MEMORY_MODE,
+                COLUMN_PINNED,
+                COLUMN_TAGS,
+            ),
             "$COLUMN_ID = ?",
             arrayOf(conversationId.toString()),
             null,
@@ -205,6 +241,9 @@ class LocalChatRepository(context: Context) :
                     cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_MEMORY_MODE)),
                 ),
                 pinned = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_PINNED)) == 1,
+                tags = decodeTagIds(
+                    cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TAGS)),
+                ),
             )
         }
     }
@@ -267,6 +306,7 @@ class LocalChatRepository(context: Context) :
                 COLUMN_REPLIED_TO_ID,
                 COLUMN_REPLIED_ROLE,
                 COLUMN_REPLIED_PREVIEW,
+                COLUMN_STARRED,
             ),
             "$COLUMN_CONVERSATION_ID = ?",
             arrayOf(conversationId.toString()),
@@ -284,6 +324,7 @@ class LocalChatRepository(context: Context) :
                 val repliedToIdIndex = cursor.getColumnIndexOrThrow(COLUMN_REPLIED_TO_ID)
                 val repliedRoleIndex = cursor.getColumnIndexOrThrow(COLUMN_REPLIED_ROLE)
                 val repliedPreviewIndex = cursor.getColumnIndexOrThrow(COLUMN_REPLIED_PREVIEW)
+                val starredIndex = cursor.getColumnIndexOrThrow(COLUMN_STARRED)
                 while (cursor.moveToNext()) {
                     add(
                         ChatMessage(
@@ -297,6 +338,7 @@ class LocalChatRepository(context: Context) :
                             repliedRole = cursor.getString(repliedRoleIndex)
                                 ?.let { name -> MessageRole.entries.firstOrNull { it.name == name } },
                             repliedPreview = cursor.getString(repliedPreviewIndex),
+                            starred = cursor.getInt(starredIndex) == 1,
                         ),
                     )
                 }
@@ -420,6 +462,8 @@ class LocalChatRepository(context: Context) :
             put(COLUMN_REPLIED_TO_ID, repliedToId)
             put(COLUMN_REPLIED_ROLE, repliedRole?.name)
             put(COLUMN_REPLIED_PREVIEW, repliedPreview)
+            // 新消息默认未收藏。
+            put(COLUMN_STARRED, 0)
         }
         val db = writableDatabase
         val messageId = db.insertOrThrow(TABLE_MESSAGES, null, values)
@@ -430,6 +474,54 @@ class LocalChatRepository(context: Context) :
             arrayOf(conversationId.toString()),
         )
         return messageId
+    }
+
+    override fun setMessageStarred(messageId: Long, starred: Boolean) {
+        writableDatabase.update(
+            TABLE_MESSAGES,
+            ContentValues().apply { put(COLUMN_STARRED, if (starred) 1 else 0) },
+            "$COLUMN_ID = ?",
+            arrayOf(messageId.toString()),
+        )
+    }
+
+    override fun getStarredMessages(): List<StarredMessage> {
+        val sql = """
+            SELECT m.$COLUMN_ID, m.$COLUMN_CONVERSATION_ID, m.$COLUMN_ROLE,
+                   m.$COLUMN_CONTENT, m.$COLUMN_CREATED_AT, m.$COLUMN_STARRED,
+                   c.$COLUMN_TITLE
+            FROM $TABLE_MESSAGES m
+            INNER JOIN $TABLE_CONVERSATIONS c
+                ON m.$COLUMN_CONVERSATION_ID = c.$COLUMN_ID
+            WHERE m.$COLUMN_STARRED = 1
+            ORDER BY m.$COLUMN_CREATED_AT DESC, m.$COLUMN_ID DESC
+        """.trimIndent()
+        return readableDatabase.rawQuery(sql, null).use { cursor ->
+            buildList {
+                val idIndex = cursor.getColumnIndexOrThrow(COLUMN_ID)
+                val conversationIndex = cursor.getColumnIndexOrThrow(COLUMN_CONVERSATION_ID)
+                val roleIndex = cursor.getColumnIndexOrThrow(COLUMN_ROLE)
+                val contentIndex = cursor.getColumnIndexOrThrow(COLUMN_CONTENT)
+                val createdAtIndex = cursor.getColumnIndexOrThrow(COLUMN_CREATED_AT)
+                val starredIndex = cursor.getColumnIndexOrThrow(COLUMN_STARRED)
+                val titleIndex = cursor.getColumnIndexOrThrow(COLUMN_TITLE)
+                while (cursor.moveToNext()) {
+                    add(
+                        StarredMessage(
+                            message = ChatMessage(
+                                id = cursor.getLong(idIndex),
+                                conversationId = cursor.getLong(conversationIndex),
+                                role = MessageRole.valueOf(cursor.getString(roleIndex)),
+                                content = cursor.getString(contentIndex),
+                                createdAt = cursor.getLong(createdAtIndex),
+                                starred = cursor.getInt(starredIndex) == 1,
+                            ),
+                            conversationTitle = cursor.getString(titleIndex),
+                        ),
+                    )
+                }
+            }
+        }
     }
 
     override fun updateMessageRole(messageId: Long, role: MessageRole) {
@@ -557,6 +649,27 @@ class LocalChatRepository(context: Context) :
         }
     }
 
+    override fun clearConversationMessages(conversationId: Long) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.delete(
+                TABLE_MESSAGES,
+                "$COLUMN_CONVERSATION_ID = ?",
+                arrayOf(conversationId.toString()),
+            )
+            db.update(
+                TABLE_CONVERSATIONS,
+                ContentValues().apply { put(COLUMN_UPDATED_AT, System.currentTimeMillis()) },
+                "$COLUMN_ID = ?",
+                arrayOf(conversationId.toString()),
+            )
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
     override fun finalizeInterruptedThinking() {
         writableDatabase.update(
             TABLE_MESSAGES,
@@ -659,6 +772,112 @@ class LocalChatRepository(context: Context) :
         }
     }
 
+    // ---------------- 会话标签 ----------------
+
+    override fun getTags(): List<Tag> {
+        return readableDatabase.query(
+            TABLE_TAGS,
+            arrayOf(COLUMN_ID, COLUMN_NAME, COLUMN_COLOR),
+            null,
+            null,
+            null,
+            null,
+            "$COLUMN_NAME COLLATE NOCASE ASC",
+        ).use { cursor ->
+            buildList {
+                val idIndex = cursor.getColumnIndexOrThrow(COLUMN_ID)
+                val nameIndex = cursor.getColumnIndexOrThrow(COLUMN_NAME)
+                val colorIndex = cursor.getColumnIndexOrThrow(COLUMN_COLOR)
+                while (cursor.moveToNext()) {
+                    add(
+                        Tag(
+                            id = cursor.getLong(idIndex),
+                            name = cursor.getString(nameIndex),
+                            colorHex = cursor.getString(colorIndex),
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    override fun addTag(name: String, colorHex: String): Long =
+        writableDatabase.insertOrThrow(
+            TABLE_TAGS,
+            null,
+            ContentValues().apply {
+                put(COLUMN_NAME, name.trim())
+                put(COLUMN_COLOR, colorHex)
+            },
+        )
+
+    override fun updateTag(tag: Tag) {
+        writableDatabase.update(
+            TABLE_TAGS,
+            ContentValues().apply {
+                put(COLUMN_NAME, tag.name.trim())
+                put(COLUMN_COLOR, tag.colorHex)
+            },
+            "$COLUMN_ID = ?",
+            arrayOf(tag.id.toString()),
+        )
+    }
+
+    override fun deleteTag(tagId: Long) {
+        writableDatabase.delete(
+            TABLE_TAGS,
+            "$COLUMN_ID = ?",
+            arrayOf(tagId.toString()),
+        )
+        // 把该标签从所有会话上摘掉（移除 JSON 数组里的对应 id）。
+        val conversations = getConversations("")
+        writableDatabase.beginTransaction()
+        try {
+            conversations.forEach { conversation ->
+                val remaining = conversation.tags.filter { it != tagId }
+                if (remaining.size != conversation.tags.size) {
+                    writableDatabase.update(
+                        TABLE_CONVERSATIONS,
+                        ContentValues().apply { put(COLUMN_TAGS, encodeTagIds(remaining)) },
+                        "$COLUMN_ID = ?",
+                        arrayOf(conversation.id.toString()),
+                    )
+                }
+            }
+            writableDatabase.setTransactionSuccessful()
+        } finally {
+            writableDatabase.endTransaction()
+        }
+    }
+
+    override fun setConversationTags(conversationId: Long, tagIds: List<Long>) {
+        writableDatabase.update(
+            TABLE_CONVERSATIONS,
+            ContentValues().apply { put(COLUMN_TAGS, encodeTagIds(tagIds)) },
+            "$COLUMN_ID = ?",
+            arrayOf(conversationId.toString()),
+        )
+    }
+
+    /** 把标签 id 列表编码成可存进 TEXT 列的 JSON 数组字符串。 */
+    private fun encodeTagIds(ids: List<Long>): String =
+        JSONArray().apply { ids.forEach { put(it) } }.toString()
+
+    /** 从 JSON 数组字符串里解出标签 id 列表，格式异常时返回空列表。 */
+    private fun decodeTagIds(raw: String?): List<Long> {
+        if (raw.isNullOrBlank()) return emptyList()
+        return try {
+            val array = JSONArray(raw)
+            buildList {
+                for (i in 0 until array.length()) {
+                    add(array.getLong(i))
+                }
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
     private fun escapeLike(value: String): String {
         return value
             .replace("\\", "\\\\")
@@ -668,7 +887,7 @@ class LocalChatRepository(context: Context) :
 
     companion object {
         private const val DATABASE_NAME = "chatyue.db"
-        private const val DATABASE_VERSION = 4
+        private const val DATABASE_VERSION = 6
         private const val SUMMARY_CREATED_AT = 1L
 
         /** SQLite 单条语句的变量数上限，批量删除按此分片，避免超出 999 限制。 */
@@ -676,11 +895,15 @@ class LocalChatRepository(context: Context) :
 
         private const val TABLE_CONVERSATIONS = "conversations"
         private const val TABLE_MESSAGES = "messages"
+        private const val TABLE_TAGS = "tags"
         private const val COLUMN_ID = "id"
         private const val COLUMN_TITLE = "title"
         private const val COLUMN_UPDATED_AT = "updated_at"
         private const val COLUMN_MEMORY_MODE = "memory_mode"
         private const val COLUMN_PINNED = "pinned"
+        private const val COLUMN_TAGS = "tags"
+        private const val COLUMN_NAME = "name"
+        private const val COLUMN_COLOR = "color"
         private const val COLUMN_CONVERSATION_ID = "conversation_id"
         private const val COLUMN_ROLE = "role"
         private const val COLUMN_CONTENT = "content"
@@ -688,5 +911,6 @@ class LocalChatRepository(context: Context) :
         private const val COLUMN_REPLIED_TO_ID = "replied_to_id"
         private const val COLUMN_REPLIED_ROLE = "replied_role"
         private const val COLUMN_REPLIED_PREVIEW = "replied_preview"
+        private const val COLUMN_STARRED = "starred"
     }
 }

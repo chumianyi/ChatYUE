@@ -13,7 +13,9 @@ import android.speech.RecognizerIntent
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.PopupMenu
+import android.widget.TextView
 import android.widget.Toast
 import java.io.File
 import java.util.Locale
@@ -49,7 +51,9 @@ import com.chatyue.chat.databinding.DialogContextPanelBinding
 import com.chatyue.chat.databinding.ItemAttachmentThumbBinding
 import com.chatyue.chat.remote.RemoteConfigRepository
 import com.chatyue.chat.tools.EssayActivity
+import com.chatyue.chat.tools.PromptToolActivity
 import com.chatyue.chat.tools.TranslationActivity
+import com.chatyue.chat.StarredActivity
 import io.noties.markwon.Markwon
 import java.util.concurrent.Executors
 import kotlin.math.min
@@ -61,6 +65,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var messageAdapter: ChatMessageAdapter
     private lateinit var conversationAdapter: ConversationAdapter
     private lateinit var draftStore: DraftStore
+
+    /** 侧边栏会话列表当前生效的标签筛选；null 表示不过滤（显示全部）。 */
+    private var activeTagFilter: Long? = null
 
     /** 启动消息搜索页，返回用户选中的会话并打开，可选定位到命中的消息。 */
     private val searchLauncher = registerForActivityResult(
@@ -156,6 +163,12 @@ class MainActivity : AppCompatActivity() {
     private var messageSpeaker: MessageSpeaker? = null
     private var speakingMessageId: Long? = null
 
+    /** 当前会话已加载的消息列表，供「会话内搜索」检索命中。 */
+    private var currentMessages: List<ChatMessage> = emptyList()
+    /** 会话内搜索命中（消息 id 列表），配合 inSearchIndex 上下跳转。 */
+    private var inSearchMatches: List<Long> = emptyList()
+    private var inSearchIndex: Int = -1
+
     /** 强制升级守护（2.0）。 */
     private var versionGuard: VersionGuard? = null
 
@@ -240,6 +253,8 @@ class MainActivity : AppCompatActivity() {
         isInBackground = false
         // 回到前台，清掉可能残留的「生成完成」通知。
         generationNotifications.cancel()
+        // 从「标签管理」等页返回时，会话列表与筛选 chip 需反映最新标签。
+        refreshConversationList(binding.searchInput.text?.toString().orEmpty())
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -416,6 +431,13 @@ class MainActivity : AppCompatActivity() {
             showNewConversationModeDialog()
             binding.drawerLayout.closeDrawer(GravityCompat.START)
         }
+        binding.inSearchButton.setOnClickListener { openInSearch() }
+        binding.searchClose.setOnClickListener { closeInSearch() }
+        binding.searchPrev.setOnClickListener { gotoInSearchMatch(-1) }
+        binding.searchNext.setOnClickListener { gotoInSearchMatch(1) }
+        binding.searchInputConv.doAfterTextChanged { text ->
+            runInSearch(text?.toString().orEmpty())
+        }
         binding.sendButton.setOnClickListener {
             if (isGenerating()) {
                 stopGeneration(showNotice = true)
@@ -459,11 +481,92 @@ class MainActivity : AppCompatActivity() {
         binding.toolEssay.setOnClickListener {
             openTool(EssayActivity::class.java)
         }
+        binding.toolCodeExplain.setOnClickListener {
+            openTool(
+                PromptToolActivity.intent(
+                    this,
+                    getString(R.string.tool_code_explain),
+                    getString(R.string.tool_code_explain_prompt),
+                    getString(R.string.tool_code_explain_placeholder),
+                    R.string.tool_explain_action,
+                    optionLabels = listOf(
+                        getString(R.string.tool_lang_auto),
+                        "Python", "Java", "Kotlin", "JavaScript", "C++", "Go", "SQL",
+                    ),
+                    optionPrompts = listOf(
+                        "",
+                        "代码语言：Python。",
+                        "代码语言：Java。",
+                        "代码语言：Kotlin。",
+                        "代码语言：JavaScript。",
+                        "代码语言：C++。",
+                        "代码语言：Go。",
+                        "代码语言：SQL。",
+                    ),
+                ),
+            )
+        }
+        binding.toolPolish.setOnClickListener {
+            openTool(
+                PromptToolActivity.intent(
+                    this,
+                    getString(R.string.tool_polish),
+                    getString(R.string.tool_polish_prompt),
+                    getString(R.string.tool_polish_placeholder),
+                    R.string.tool_polish_action,
+                    optionLabels = listOf(
+                        getString(R.string.tool_tone_formal),
+                        getString(R.string.tool_tone_spoken),
+                        getString(R.string.tool_tone_business),
+                        getString(R.string.tool_tone_academic),
+                    ),
+                    optionPrompts = listOf(
+                        "输出语气：正式、规范。",
+                        "输出语气：自然、口语化。",
+                        "输出语气：商务、专业。",
+                        "输出语气：学术、严谨。",
+                    ),
+                ),
+            )
+        }
+        binding.toolSummary.setOnClickListener {
+            openTool(
+                PromptToolActivity.intent(
+                    this,
+                    getString(R.string.tool_summary),
+                    getString(R.string.tool_summary_prompt),
+                    getString(R.string.tool_summary_placeholder),
+                    R.string.tool_summary_action,
+                    optionLabels = listOf(
+                        getString(R.string.tool_len_short),
+                        getString(R.string.tool_len_medium),
+                        getString(R.string.tool_len_long),
+                    ),
+                    optionPrompts = listOf(
+                        "摘要长度：简短，保留核心要点，不超过 100 字。",
+                        "摘要长度：中等，覆盖主要信息与逻辑，约 200 字。",
+                        "摘要长度：详细，保留关键细节与结论，约 400 字。",
+                    ),
+                ),
+            )
+        }
+        binding.toolStarred.setOnClickListener {
+            // 复用 searchLauncher：收藏页点击返回会话 id + 消息 id，主页据此跳转定位。
+            searchLauncher.launch(Intent(this, StarredActivity::class.java))
+        }
+        binding.toolTags.setOnClickListener {
+            startActivity(Intent(this, TagsActivity::class.java))
+        }
     }
 
     private fun openTool(activity: Class<*>) {
         binding.drawerLayout.closeDrawer(GravityCompat.START)
         startActivity(Intent(this, activity))
+    }
+
+    private fun openTool(intent: Intent) {
+        binding.drawerLayout.closeDrawer(GravityCompat.START)
+        startActivity(intent)
     }
 
     private fun configureBackNavigation() {
@@ -1135,6 +1238,7 @@ class MainActivity : AppCompatActivity() {
         binding.messageList.visibility = if (hasMessages) View.VISIBLE else View.GONE
         messageAdapter.setStreamingMessageId(streamingMessageId)
         messageAdapter.submitMessages(messages)
+        currentMessages = messages
         trackAwayArrivals(messages)
         updateContextIndicator(messages)
         cancelPendingMessageListScroll(binding.messageList)
@@ -1351,7 +1455,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshConversationList(query: String = "") {
         // 仓储层已按「置顶优先 + 更新时间倒序」返回，这里再把置顶会话归入独立分组。
-        val conversations = repository.getConversations(query)
+        var conversations = repository.getConversations(query)
+        // 标签筛选：仅保留挂载了当前筛选标签的会话。
+        activeTagFilter?.let { tagId ->
+            conversations = conversations.filter { it.tags.contains(tagId) }
+        }
+        buildTagFilterChips()
         val items = mutableListOf<DrawerItem>()
         val pinned = conversations.filter { it.pinned }
         val rest = conversations.filterNot { it.pinned }
@@ -1379,12 +1488,19 @@ class MainActivity : AppCompatActivity() {
             R.string.action_pin
         }
         PopupMenu(this, anchor).apply {
-            menu.add(0, MENU_CONV_PIN, 0, pinLabel)
-            menu.add(0, MENU_CONV_RENAME, 1, R.string.action_rename_conversation)
-            menu.add(0, MENU_CONV_EXPORT, 2, R.string.action_export_conversation)
-            menu.add(0, MENU_CONV_DELETE, 3, R.string.action_delete_conversation)
+            menu.add(0, MENU_CONV_TAGS, 0, R.string.action_tag)
+            menu.add(0, MENU_CONV_PIN, 1, pinLabel)
+            menu.add(0, MENU_CONV_RENAME, 2, R.string.action_rename_conversation)
+            menu.add(0, MENU_CONV_EXPORT, 3, R.string.action_export_conversation)
+            menu.add(0, MENU_CONV_CLEAR, 4, R.string.action_clear_messages)
+            menu.add(0, MENU_CONV_DELETE, 5, R.string.action_delete_conversation)
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
+                    MENU_CONV_TAGS -> {
+                        showTagPicker(conversation)
+                        true
+                    }
+
                     MENU_CONV_PIN -> {
                         togglePin(conversation)
                         true
@@ -1400,6 +1516,11 @@ class MainActivity : AppCompatActivity() {
                         true
                     }
 
+                    MENU_CONV_CLEAR -> {
+                        confirmClearMessages(conversation)
+                        true
+                    }
+
                     MENU_CONV_DELETE -> {
                         confirmDeleteConversation(conversation)
                         true
@@ -1411,6 +1532,122 @@ class MainActivity : AppCompatActivity() {
         }.show()
     }
 
+    /**
+     * 给会话挂载标签：弹出多选对话框，勾选后全量覆盖该会话的标签集合。
+     * 若还没有任何标签，引导用户先去「标签管理」页新建。
+     */
+    private fun showTagPicker(conversation: Conversation) {
+        val tags = repository.getTags()
+        if (tags.isEmpty()) {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.tag_picker_title)
+                .setMessage(R.string.tag_filter_empty)
+                .setPositiveButton(R.string.tags_manage) { _, _ ->
+                    startActivity(Intent(this, TagsActivity::class.java))
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+            return
+        }
+        val checked = BooleanArray(tags.size) { i -> conversation.tags.contains(tags[i].id) }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.tag_picker_title)
+            .setMultiChoiceItems(
+                tags.map { it.name }.toTypedArray(),
+                checked,
+            ) { _, which, isChecked -> checked[which] = isChecked }
+            .setPositiveButton(R.string.tag_picker_save) { _, _ ->
+                val chosen = tags.filterIndexed { i, _ -> checked[i] }.map { it.id }
+                repository.setConversationTags(conversation.id, chosen)
+                if (chosen.isNotEmpty()) activeTagFilter = chosen.first()
+                refreshConversationList()
+                CompatToast.show(this, R.string.tag_assigned_done)
+            }
+            .setNeutralButton(R.string.tag_picker_none) { _, _ ->
+                repository.setConversationTags(conversation.id, emptyList())
+                refreshConversationList()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    /** 根据当前标签字典重建侧边栏的筛选 chip 行；无标签或单标签时隐藏。 */
+    private fun buildTagFilterChips() {
+        val tags = repository.getTags()
+        val chipRow = binding.tagFilterRow
+        val scroller = binding.tagFilterScroller
+        chipRow.removeAllViews()
+        if (tags.size < 2 && activeTagFilter == null) {
+            scroller.visibility = View.GONE
+            return
+        }
+        scroller.visibility = View.VISIBLE
+        // 「全部」chip：清除当前筛选。
+        chipRow.addView(
+            makeFilterChip(
+                text = getString(R.string.tag_filter_all),
+                selected = activeTagFilter == null,
+                colorHex = null,
+            ) { activeTagFilter = null; refreshConversationList() },
+        )
+        tags.forEach { tag ->
+            chipRow.addView(
+                makeFilterChip(
+                    text = tag.name,
+                    selected = activeTagFilter == tag.id,
+                    colorHex = tag.colorHex,
+                ) {
+                    activeTagFilter = if (activeTagFilter == tag.id) null else tag.id
+                    refreshConversationList()
+                },
+            )
+        }
+    }
+
+    /** 生成一个筛选 chip：选中态用标签色描边 + 同色浅底，未选中为默认描边。 */
+    private fun makeFilterChip(
+        text: String,
+        selected: Boolean,
+        colorHex: String?,
+        onClick: () -> Unit,
+    ): TextView {
+        val chip = TextView(this)
+        chip.text = text
+        chip.textSize = 13f
+        chip.setPadding(24, 10, 24, 10)
+        chip.background = ContextCompat.getDrawable(this, R.drawable.bg_tag_chip)
+        val accent = if (colorHex != null) {
+            android.graphics.Color.parseColor(colorHex)
+        } else {
+            ContextCompat.getColor(this, R.color.ds_blue)
+        }
+        if (selected) {
+            chip.backgroundTintList = android.content.res.ColorStateList.valueOf(
+                android.graphics.Color.argb(
+                    38,
+                    android.graphics.Color.red(accent),
+                    android.graphics.Color.green(accent),
+                    android.graphics.Color.blue(accent),
+                ),
+            )
+            (chip.background as? android.graphics.drawable.GradientDrawable)
+                ?.setStroke(2, accent)
+            chip.setTextColor(accent)
+        } else {
+            chip.backgroundTintList = null
+            (chip.background as? android.graphics.drawable.GradientDrawable)
+                ?.setStroke(1, ContextCompat.getColor(this, R.color.ds_divider))
+            chip.setTextColor(ContextCompat.getColor(this, R.color.ds_text_primary))
+        }
+        chip.setOnClickListener { onClick() }
+        val lp = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply { marginEnd = 8 }
+        chip.layoutParams = lp
+        return chip
+    }
+
     private fun togglePin(conversation: Conversation) {
         val pinned = !conversation.pinned
         repository.setConversationPinned(conversation.id, pinned)
@@ -1419,6 +1656,22 @@ class MainActivity : AppCompatActivity() {
             this,
             if (pinned) R.string.toast_conversation_pinned else R.string.toast_conversation_unpinned,
         )
+    }
+
+    private fun confirmClearMessages(conversation: Conversation) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.confirm_clear_messages_title)
+            .setMessage(R.string.confirm_clear_messages)
+            .setPositiveButton(R.string.confirm_clear_positive) { _, _ ->
+                repository.clearConversationMessages(conversation.id)
+                refreshConversationList(binding.searchInput.text?.toString().orEmpty())
+                if (currentConversationId == conversation.id) {
+                    loadMessages(conversation.id, scrollToEnd = false)
+                }
+                CompatToast.show(this, R.string.toast_messages_cleared)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun showRenameDialog(conversation: Conversation) {
@@ -1684,6 +1937,7 @@ class MainActivity : AppCompatActivity() {
     private fun handleMessageLongPress(message: ChatMessage, anchor: View) {
         // 多选模式下长按不再弹菜单，避免两种交互打架。
         if (messageAdapter.isSelectionMode()) return
+        val starLabel = if (message.starred) R.string.action_unstar else R.string.action_star
         PopupMenu(this, anchor).apply {
             menu.add(0, MENU_COPY_ITEM, 0, R.string.action_copy)
             menu.add(0, MENU_REPLY_ITEM, 1, R.string.action_reply)
@@ -1694,7 +1948,9 @@ class MainActivity : AppCompatActivity() {
             menu.add(0, MENU_MULTI_SELECT_ITEM, 3, R.string.action_multi_select)
             menu.add(0, MENU_REGENERATE_ITEM, 4, R.string.action_regenerate)
             menu.add(0, MENU_SHARE_ITEM, 5, R.string.action_share)
-            menu.add(0, MENU_DELETE_ITEM, 6, R.string.action_delete)
+            menu.add(0, MENU_STAR_ITEM, 6, starLabel)
+            menu.add(0, MENU_FORWARD_ITEM, 7, R.string.action_forward)
+            menu.add(0, MENU_DELETE_ITEM, 8, R.string.action_delete)
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     MENU_COPY_ITEM -> {
@@ -1724,6 +1980,16 @@ class MainActivity : AppCompatActivity() {
 
                     MENU_SHARE_ITEM -> {
                         shareMessage(message)
+                        true
+                    }
+
+                    MENU_STAR_ITEM -> {
+                        toggleStar(message)
+                        true
+                    }
+
+                    MENU_FORWARD_ITEM -> {
+                        forwardMessage(message)
                         true
                     }
 
@@ -1806,6 +2072,34 @@ class MainActivity : AppCompatActivity() {
             return
         }
         shareText(MessageShareFormatter.format(message))
+    }
+
+    /** 转发：把这条消息的正文作为新消息发到另一个会话。 */
+    private fun forwardMessage(message: ChatMessage) {
+        if (message.content.isEmpty()) {
+            CompatToast.show(this, R.string.forward_empty)
+            return
+        }
+        val targets = repository.getConversations("")
+            .filter { it.id != currentConversationId }
+        if (targets.isEmpty()) {
+            CompatToast.show(this, R.string.forward_no_target)
+            return
+        }
+        val titles = targets.map { ConversationFormatter.titleFrom(it.title) }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle(R.string.forward_title)
+            .setItems(titles) { _, which ->
+                val target = targets[which]
+                repository.addMessage(target.id, MessageRole.USER, message.content)
+                if (currentConversationId == target.id) {
+                    loadMessages(target.id, scrollToEnd = true)
+                }
+                refreshConversationList(binding.searchInput.text?.toString().orEmpty())
+                CompatToast.show(this, getString(R.string.forward_done, titles[which]))
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     /** 多选消息分享：按阅读顺序拼接全部选中消息。 */
@@ -1945,6 +2239,85 @@ class MainActivity : AppCompatActivity() {
         messageAdapter.setHighlightMessageId(null)
     }
 
+    // ---------------- 会话内搜索 ----------------
+
+    /** 打开会话内搜索栏：覆盖标题栏，聚焦输入框并弹出键盘。 */
+    private fun openInSearch() {
+        if (currentMessages.isEmpty()) {
+            CompatToast.show(this, R.string.search_no_match)
+            return
+        }
+        binding.searchBar.visibility = View.VISIBLE
+        binding.searchInputConv.setText("")
+        binding.searchCount.visibility = View.GONE
+        binding.searchInputConv.requestFocus()
+        showKeyboard(binding.searchInputConv)
+    }
+
+    /** 关闭搜索栏：清空命中、熄灭高亮、收起键盘。 */
+    private fun closeInSearch() {
+        binding.searchBar.visibility = View.GONE
+        binding.searchInputConv.setText("")
+        inSearchMatches = emptyList()
+        inSearchIndex = -1
+        binding.messageList.removeCallbacks(clearHighlightRunnable)
+        messageAdapter.setHighlightMessageId(null)
+        hideKeyboard()
+    }
+
+    /**
+     * 按关键词重新检索当前会话，命中后跳到第一条并刷新「x/y」计数。
+     * 仅检索用户与助手消息，跳过思考过程与压缩摘要。
+     */
+    private fun runInSearch(query: String) {
+        val normalized = query.trim()
+        if (normalized.isEmpty()) {
+            inSearchMatches = emptyList()
+            inSearchIndex = -1
+            binding.searchCount.visibility = View.GONE
+            binding.messageList.removeCallbacks(clearHighlightRunnable)
+            messageAdapter.setHighlightMessageId(null)
+            return
+        }
+        val lower = normalized.lowercase()
+        inSearchMatches = currentMessages
+            .filter { it.role == MessageRole.USER || it.role == MessageRole.ASSISTANT }
+            .filter { it.content.lowercase().contains(lower) }
+            .map { it.id }
+        if (inSearchMatches.isEmpty()) {
+            inSearchIndex = -1
+            binding.searchCount.visibility = View.GONE
+            binding.messageList.removeCallbacks(clearHighlightRunnable)
+            messageAdapter.setHighlightMessageId(null)
+            CompatToast.show(this, R.string.search_no_match)
+            return
+        }
+        inSearchIndex = 0
+        gotoInSearchMatch(0)
+    }
+
+    /** 在命中列表里按 delta 跳转（1=下一条，-1=上一条），循环回绕。 */
+    private fun gotoInSearchMatch(delta: Int) {
+        if (inSearchMatches.isEmpty()) return
+        inSearchIndex = (inSearchIndex + delta).mod(inSearchMatches.size)
+        val targetId = inSearchMatches[inSearchIndex]
+        binding.searchCount.visibility = View.VISIBLE
+        binding.searchCount.text = getString(
+            R.string.search_count, inSearchIndex + 1, inSearchMatches.size,
+        )
+        scrollToMessageAndHighlight(targetId)
+    }
+
+    /** 滚动到指定消息并短暂高亮，复用引用块跳转的同一套局部刷新通道。 */
+    private fun scrollToMessageAndHighlight(messageId: Long) {
+        val position = messageAdapter.findRowPositionOfMessage(messageId)
+        if (position < 0) return
+        binding.messageList.removeCallbacks(clearHighlightRunnable)
+        binding.messageList.smoothScrollToPosition(position)
+        messageAdapter.setHighlightMessageId(messageId)
+        binding.messageList.postDelayed(clearHighlightRunnable, HIGHLIGHT_MILLIS)
+    }
+
     /**
      * 重新生成：以该消息对应的提问为基准，删掉其后的全部内容并重新请求。
      *
@@ -1985,6 +2358,17 @@ class MainActivity : AppCompatActivity() {
         stopSpeaking(silent = true)
         dispatchChatRequest(conversationId)
         CompatToast.show(this, R.string.action_regenerate_started)
+    }
+
+    /** 收藏 / 取消收藏：切换标记并刷新当前会话的消息列表。 */
+    private fun toggleStar(message: ChatMessage) {
+        val starred = !message.starred
+        repository.setMessageStarred(message.id, starred)
+        messageAdapter.updateStarred(message.id, starred)
+        CompatToast.show(
+            this,
+            if (starred) R.string.action_star_done else R.string.action_unstar_done,
+        )
     }
 
     private fun confirmDeleteMessage(message: ChatMessage) {
@@ -2257,10 +2641,14 @@ class MainActivity : AppCompatActivity() {
         private const val MENU_MULTI_SELECT_ITEM = 104
         private const val MENU_SHARE_ITEM = 105
         private const val MENU_EDIT_ITEM = 106
+        private const val MENU_FORWARD_ITEM = 107
+        private const val MENU_STAR_ITEM = 108
         private const val MENU_CONV_PIN = 200
         private const val MENU_CONV_RENAME = 201
         private const val MENU_CONV_EXPORT = 203
         private const val MENU_CONV_DELETE = 202
+        private const val MENU_CONV_CLEAR = 204
+        private const val MENU_CONV_TAGS = 205
         private const val MENU_SEARCH_MESSAGES = 6
         private const val MENU_STATS = 8
         private const val MENU_EXPORT_CONVERSATION = 7

@@ -43,5 +43,15 @@
             android:paddingBottom="10dp"
             android:textColor="@color/ds_text_primary"
             android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/timeLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="end"
+            android:textColor="@color/ds_text_tertiary"
+            android:textSize="11sp"
+            tools:text="09:05" />
     </LinearLayout>
 </LinearLayout>
